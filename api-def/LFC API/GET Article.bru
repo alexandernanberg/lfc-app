@@ -1,0 +1,15 @@
+meta {
+  name: GET Article
+  type: http
+  seq: 1
+}
+
+get {
+  url: https://www.lfc.se/webapi/News/GetNewsById?newsId=55665
+  body: none
+  auth: none
+}
+
+query {
+  newsId: 55665
+}

@@ -1,0 +1,20 @@
+{
+  "extends": ["alexandernanberg", "alexandernanberg/typescript"],
+  "plugins": ["react-native"],
+  "settings": {
+    "import/ignore": ["react-native"]
+  },
+  "rules": {
+    "react/no-unknown-property": "off",
+    "react/prop-types": "off",
+    "import/namespace": "off",
+    "@typescript-eslint/no-var-requires": "off",
+    "@typescript-eslint/no-misused-promises": "off",
+    "react-native/no-unused-styles": "error",
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      { "varsIgnorePattern": "_", "ignoreRestSiblings": true }
+    ]
+  },
+  "ignorePatterns": ["node_modules"]
+}

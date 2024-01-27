@@ -1,0 +1,15 @@
+meta {
+  name: Get Article Comments
+  type: http
+  seq: 2
+}
+
+get {
+  url: https://www.lfc.se/webapi/Comment/GetCommentList?newsId=55665
+  body: none
+  auth: none
+}
+
+query {
+  newsId: 55665
+}

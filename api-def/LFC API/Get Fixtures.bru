@@ -1,0 +1,15 @@
+meta {
+  name: Get Fixtures
+  type: http
+  seq: 4
+}
+
+get {
+  url: https://www.lfc.se/webapi/Fixture/GetFixture?seasonId=35
+  body: none
+  auth: none
+}
+
+query {
+  seasonId: 35
+}
