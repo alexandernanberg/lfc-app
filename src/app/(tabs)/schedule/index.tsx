@@ -7,7 +7,7 @@ import type { Locale } from 'date-fns/locale'
 import { sv } from 'date-fns/locale'
 import { Image } from 'expo-image'
 import { Stack } from 'expo-router'
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   FlatList,
@@ -56,17 +56,6 @@ function List() {
   const nextFixtureIndex = nextFixture ? data.indexOf(nextFixture) : 0
 
   const ref = useRef<FlatList<Fixture>>(null)
-
-  // initialScrollIndex is supposed to work for this but doesn't for some reason.
-  useEffect(() => {
-    ref.current?.scrollToIndex({
-      index: nextFixtureIndex,
-      viewOffset: headerHeight + insets.top,
-      animated: false,
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
   useScrollToTop(
     useRef({
       scrollToTop: () =>
@@ -92,6 +81,7 @@ function List() {
         offset: ROW_HEIGHT * index,
         index,
       })}
+      initialScrollIndex={nextFixtureIndex}
       renderItem={({ item }) => <Card key={item.id} fixture={item} />}
     />
   )
