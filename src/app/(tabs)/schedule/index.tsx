@@ -1,15 +1,17 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
+import { useHeaderHeight } from '@react-navigation/elements'
+import { useScrollToTop } from '@react-navigation/native'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { formatRelative } from 'date-fns'
 import type { Locale } from 'date-fns/locale'
 import { sv } from 'date-fns/locale'
 import { Image } from 'expo-image'
 import { Stack } from 'expo-router'
-import { Suspense, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
+  FlatList,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -42,6 +44,7 @@ export default function App() {
 
 function List() {
   const insets = useSafeAreaInsets()
+  const headerHeight = useHeaderHeight()
   const tabBarHeight = useBottomTabBarHeight()
 
   const { data } = useSuspenseQuery({
@@ -49,27 +52,48 @@ function List() {
     queryFn: () => listFixtures(),
   })
 
-  const nextFixture = useMemo(() => findNextFixture(data), [data])
-  const index = nextFixture ? data.indexOf(nextFixture) : 0
+  const nextFixture = useMemo(() => findLastFixture(data), [data])
+  const nextFixtureIndex = nextFixture ? data.indexOf(nextFixture) : 0
 
-  let contentOffset = index * 98.7
-  if (contentOffset > 0) {
-    contentOffset -= 98.7 * 2
-  }
+  const ref = useRef<FlatList<Fixture>>(null)
+
+  // initialScrollIndex is supposed to work for this but doesn't for some reason.
+  useEffect(() => {
+    ref.current?.scrollToIndex({
+      index: nextFixtureIndex,
+      viewOffset: headerHeight + insets.top,
+      animated: false,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useScrollToTop(
+    useRef({
+      scrollToTop: () =>
+        ref.current?.scrollToOffset({
+          offset: -headerHeight - insets.top,
+        }),
+    }),
+  )
 
   return (
-    <ScrollView
-      contentInset={{ top: insets.top, bottom: tabBarHeight }}
+    <FlatList
+      ref={ref}
+      data={data}
+      keyExtractor={(item) => item.id}
+      contentInset={{ top: headerHeight + insets.top, bottom: tabBarHeight }}
+      contentOffset={{ y: -headerHeight - insets.top, x: 0 }}
       scrollIndicatorInsets={{ bottom: tabBarHeight - insets.bottom }}
-      contentOffset={{ y: contentOffset, x: 0 }}
       style={{
         paddingHorizontal: 17,
       }}
-    >
-      {data.map((item) => (
-        <Card key={item.id} fixture={item} />
-      ))}
-    </ScrollView>
+      getItemLayout={(_, index) => ({
+        length: ROW_HEIGHT,
+        offset: ROW_HEIGHT * index,
+        index,
+      })}
+      renderItem={({ item }) => <Card key={item.id} fixture={item} />}
+    />
   )
 }
 
@@ -88,12 +112,11 @@ function Card({ fixture }: CardProps) {
 
   return (
     <Pressable style={{ ...styles.card, borderBottomColor: theme.borderBase }}>
-      <View style={{ gap: 0, flex: 1 }}>
+      <View style={{ flex: 1 }}>
         <View
           style={{
             flexDirection: 'row',
             justifyContent: 'space-between',
-            flex: 1,
             gap: 12,
             marginBottom: 8,
           }}
@@ -105,11 +128,17 @@ function Card({ fixture }: CardProps) {
             {fixture.type} {fixture.playOffType && `(${fixture.playOffType})`}
           </Text>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+            flex: 1,
+          }}
+        >
           <Text
             style={{
               fontVariant: ['tabular-nums'],
-              // width: 38,
               color: theme.foregroundBase,
             }}
             numberOfLines={1}
@@ -193,28 +222,28 @@ function TeamRow({ name, logoUrl, goals, winner }: TeamRowProps) {
   )
 }
 
-function findNextFixture(data: Fixture[]): Fixture | null {
-  const today: Date = new Date()
-  today.setHours(0, 0, 0, 0)
+function findLastFixture(data: Fixture[]): Fixture | null {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0) // Clear time to only compare dates
 
   let start = 0
   let end = data.length - 1
 
-  if (data.length === 0 || data[end].startsAt < today) return null
+  // Early return if there's no past fixture
+  if (data.length === 0 || data[0].startsAt >= today) return null
 
   while (start < end) {
-    const mid: number = Math.floor((start + end) / 2)
-    const currentDate: Date = data[mid].startsAt
-    currentDate.setHours(0, 0, 0, 0)
+    const mid = Math.ceil((start + end) / 2)
 
-    if (currentDate < today) {
-      start = mid + 1
+    if (data[mid].startsAt < today) {
+      start = mid // Continue searching to the right for the last match
     } else {
-      end = mid
+      end = mid - 1
     }
   }
 
-  return data[start]
+  // `start` now points to the last fixture before today
+  return data[start].startsAt < today ? data[start] : null
 }
 
 const formatRelativeLocale = {
@@ -254,6 +283,8 @@ function RelativeTime({ date }: RelativeTimeProps) {
   return capitalizeFirstLetter(useRelativeTimeFormatter(date))
 }
 
+const ROW_HEIGHT = 100
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -267,9 +298,9 @@ const styles = StyleSheet.create({
     paddingVertical: 17,
     flex: 1,
     flexDirection: 'row',
-    minWidth: 0,
     gap: 12,
     borderBottomWidth: 1,
+    height: ROW_HEIGHT,
   },
   image: {
     height: 17,

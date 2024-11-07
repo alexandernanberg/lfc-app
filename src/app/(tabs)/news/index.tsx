@@ -1,9 +1,10 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
 import { useHeaderHeight } from '@react-navigation/elements'
+import { useScrollToTop } from '@react-navigation/native'
 import { useSuspenseInfiniteQuery } from '@tanstack/react-query'
 import { Image } from 'expo-image'
 import { Link, Stack } from 'expo-router'
-import { Suspense, memo, useCallback } from 'react'
+import { Suspense, memo, useCallback, useRef } from 'react'
 import {
   ActivityIndicator,
   FlatList,
@@ -67,13 +68,24 @@ function List() {
 
   const articles = data.pages.flat()
 
+  const ref = useRef<FlatList<Article>>(null)
+  useScrollToTop(
+    useRef({
+      scrollToTop: () =>
+        ref.current?.scrollToOffset({
+          offset: -headerHeight - insets.top,
+        }),
+    }),
+  )
+
   return (
     <FlatList
+      ref={ref}
       data={articles}
       keyExtractor={(item) => item.id}
       contentInset={{ top: headerHeight + insets.top, bottom: tabBarHeight }}
-      scrollIndicatorInsets={{ bottom: tabBarHeight - insets.bottom }}
       contentOffset={{ y: -headerHeight - insets.top, x: 0 }}
+      scrollIndicatorInsets={{ bottom: tabBarHeight - insets.bottom }}
       refreshControl={
         <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} />
       }
