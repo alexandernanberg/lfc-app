@@ -1,12 +1,10 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
-import { useHeaderHeight } from '@react-navigation/elements'
 import { useScrollToTop } from '@react-navigation/native'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { formatRelative } from 'date-fns'
 import type { Locale } from 'date-fns/locale'
 import { sv } from 'date-fns/locale'
 import { Image } from 'expo-image'
-import { Stack } from 'expo-router'
 import { Suspense, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
@@ -19,14 +17,16 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { Fixture } from '~/api'
 import { listFixtures } from '~/api'
+import { AnimatedHeaderBackground } from '~/components/animated-header-background'
+import { ScrollProvider, useScrollContext } from '~/components/scroll-context'
 import { useTheme } from '~/components/theme-context'
 import { useInterval } from '~/lib/use-interval'
 import { capitalizeFirstLetter } from '~/utils'
 
 export default function App() {
   return (
-    <>
-      <Stack.Screen options={{ title: 'Spelschema' }} />
+    <ScrollProvider>
+      <AnimatedHeaderBackground />
       <View style={styles.container}>
         <Suspense
           fallback={
@@ -38,30 +38,29 @@ export default function App() {
           <List />
         </Suspense>
       </View>
-    </>
+    </ScrollProvider>
   )
 }
 
 function List() {
   const insets = useSafeAreaInsets()
-  const headerHeight = useHeaderHeight()
   const tabBarHeight = useBottomTabBarHeight()
+  const { onScroll, offsetY } = useScrollContext()
 
   const { data } = useSuspenseQuery({
     queryKey: ['fixtures'],
     queryFn: () => listFixtures(),
   })
 
-  const nextFixture = useMemo(() => findLastFixture(data), [data])
-  const nextFixtureIndex = nextFixture ? data.indexOf(nextFixture) : 0
+  const lastFixture = useMemo(() => findLastFixture(data), [data])
+  const lastFixtureIndex = lastFixture ? data.indexOf(lastFixture) : 0
+  const initialScrollOffset = lastFixtureIndex * ROW_HEIGHT + offsetY
 
   const ref = useRef<FlatList<Fixture>>(null)
   useScrollToTop(
     useRef({
       scrollToTop: () =>
-        ref.current?.scrollToOffset({
-          offset: -headerHeight - insets.top,
-        }),
+        ref.current?.scrollToOffset({ offset: initialScrollOffset }),
     }),
   )
 
@@ -70,19 +69,22 @@ function List() {
       ref={ref}
       data={data}
       keyExtractor={(item) => item.id}
-      contentInset={{ top: headerHeight + insets.top, bottom: tabBarHeight }}
-      contentOffset={{ y: -headerHeight - insets.top, x: 0 }}
+      contentInsetAdjustmentBehavior="automatic"
+      contentInset={{ bottom: tabBarHeight - insets.bottom }}
       scrollIndicatorInsets={{ bottom: tabBarHeight - insets.bottom }}
       style={{
         paddingHorizontal: 17,
       }}
-      getItemLayout={(_, index) => ({
-        length: ROW_HEIGHT,
-        offset: ROW_HEIGHT * index,
-        index,
-      })}
-      initialScrollIndex={nextFixtureIndex}
       renderItem={({ item }) => <Card key={item.id} fixture={item} />}
+      onLayout={() => {
+        // TODO: investigate why doing this in a layout effect doesn't work
+        ref.current?.scrollToOffset({
+          offset: initialScrollOffset,
+          animated: false,
+        })
+      }}
+      onScroll={onScroll}
+      scrollEventThrottle={16}
     />
   )
 }

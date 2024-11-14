@@ -1,9 +1,8 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
-import { useHeaderHeight } from '@react-navigation/elements'
 import { useScrollToTop } from '@react-navigation/native'
 import { useSuspenseInfiniteQuery } from '@tanstack/react-query'
 import { Image } from 'expo-image'
-import { Link, Stack } from 'expo-router'
+import { Link } from 'expo-router'
 import { Suspense, memo, useCallback, useRef } from 'react'
 import {
   ActivityIndicator,
@@ -18,13 +17,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import SFSymbol from 'sweet-sfsymbols'
 import type { Article } from '~/api'
 import { listArticles } from '~/api'
+import { AnimatedHeaderBackground } from '~/components/animated-header-background'
+import { ScrollProvider, useScrollContext } from '~/components/scroll-context'
 import { useTheme } from '~/components/theme-context'
 import { RelativeTime } from '~/lib/use-relative-time-formatter'
 
 export default function App() {
   return (
-    <>
-      <Stack.Screen options={{ title: 'Nyheter' }} />
+    <ScrollProvider>
+      <AnimatedHeaderBackground />
       <View style={styles.container}>
         <Suspense
           fallback={
@@ -36,14 +37,14 @@ export default function App() {
           <List />
         </Suspense>
       </View>
-    </>
+    </ScrollProvider>
   )
 }
 
 function List() {
   const insets = useSafeAreaInsets()
-  const headerHeight = useHeaderHeight()
   const tabBarHeight = useBottomTabBarHeight()
+  const { onScroll, offsetY } = useScrollContext()
 
   const limit = 10
 
@@ -71,10 +72,7 @@ function List() {
   const ref = useRef<FlatList<Article>>(null)
   useScrollToTop(
     useRef({
-      scrollToTop: () =>
-        ref.current?.scrollToOffset({
-          offset: -headerHeight - insets.top,
-        }),
+      scrollToTop: () => ref.current?.scrollToOffset({ offset: offsetY }),
     }),
   )
 
@@ -83,15 +81,15 @@ function List() {
       ref={ref}
       data={articles}
       keyExtractor={(item) => item.id}
-      contentInset={{ top: headerHeight + insets.top, bottom: tabBarHeight }}
-      contentOffset={{ y: -headerHeight - insets.top, x: 0 }}
+      contentInsetAdjustmentBehavior="automatic"
+      contentInset={{ bottom: tabBarHeight - insets.bottom }}
       scrollIndicatorInsets={{ bottom: tabBarHeight - insets.bottom }}
-      refreshControl={
-        <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} />
-      }
       style={{
         paddingHorizontal: 17,
       }}
+      refreshControl={
+        <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} />
+      }
       renderItem={({ item, index }) => (
         <MemoCard post={item} featured={index === 0} />
       )}
@@ -102,6 +100,8 @@ function List() {
       }
       onEndReached={onEndReched}
       onEndReachedThreshold={0.5}
+      onScroll={onScroll}
+      scrollEventThrottle={16}
     />
   )
 }

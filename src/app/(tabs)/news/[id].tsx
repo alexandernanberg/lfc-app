@@ -1,6 +1,5 @@
 import IframeRenderer, { iframeModel } from '@native-html/iframe-plugin'
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
-import { useHeaderHeight } from '@react-navigation/elements'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Image } from 'expo-image'
 import { Stack, useLocalSearchParams } from 'expo-router'
@@ -17,46 +16,47 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native'
+import type {
+  CustomTagRendererRecord,
+  HTMLElementModelRecord,
+} from 'react-native-render-html'
 import { RenderHTML } from 'react-native-render-html'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import WebView from 'react-native-webview'
 import SFSymbol from 'sweet-sfsymbols'
 import type { Comment } from '~/api'
 import { getArticle, getComments } from '~/api'
+import { AnimatedHeaderBackground } from '~/components/animated-header-background'
+import { ScrollProvider, useScrollContext } from '~/components/scroll-context'
 import { useTheme } from '~/components/theme-context'
 import { DistanceTime } from '~/lib/use-relative-time-formatter'
 
-const renderers = {
-  iframe: IframeRenderer,
-}
-
-const customHTMLElementModels = {
-  iframe: iframeModel,
-}
-
 export default function Page() {
   return (
-    <View style={styles.container}>
-      <Stack.Screen options={{ headerTitle: '' }} />
-      <Suspense
-        fallback={
-          <View style={styles.loader}>
-            <ActivityIndicator />
-          </View>
-        }
-      >
-        <Content />
-      </Suspense>
-    </View>
+    <ScrollProvider>
+      <AnimatedHeaderBackground />
+
+      <View style={styles.container}>
+        <Suspense
+          fallback={
+            <View style={styles.loader}>
+              <ActivityIndicator />
+            </View>
+          }
+        >
+          <Content />
+        </Suspense>
+      </View>
+    </ScrollProvider>
   )
 }
 
 function Content() {
-  const headerHeight = useHeaderHeight()
   const tabBarHeight = useBottomTabBarHeight()
   const insets = useSafeAreaInsets()
   const theme = useTheme()
   const { width } = useWindowDimensions()
+  const { onScroll } = useScrollContext()
 
   const id = useLocalSearchParams().id as string
 
@@ -74,15 +74,9 @@ function Content() {
     .replace(/<p>\*&nbsp;(.|\s)+<\/p>\s<figure.+<\/figure>/g, '')
 
   return (
-    <ScrollView
-      contentInset={{ top: headerHeight, bottom: tabBarHeight }}
-      scrollIndicatorInsets={{ bottom: tabBarHeight - insets.bottom }}
-      contentOffset={{ y: -headerHeight, x: 0 }}
-      // style={{ paddingTop: headerHeight, paddingBottom: tabBarHeight }}
-    >
+    <>
       <Stack.Screen
         options={{
-          title: '',
           headerRight: () => (
             <TouchableOpacity
               onPress={async () => {
@@ -100,112 +94,130 @@ function Content() {
           ),
         }}
       />
-      <View style={{ padding: 17 }}>
-        <Text
-          style={{
-            fontSize: 28,
-            lineHeight: 34,
-            fontWeight: '700',
-            flexShrink: 1,
-            marginBottom: 8,
-            color: theme.foregroundBase,
-          }}
-        >
-          {article.title}
-        </Text>
-        <View style={{ marginBottom: 24 }}>
-          <Text style={{ color: theme.foregroundBaseFaded }}>
-            {article.publishedAt.toISOString().slice(0, 10)} &middot;{' '}
-            {article.author.name}
-          </Text>
-        </View>
-        <View style={{ marginBottom: 8 }}>
-          <Image
-            source={article.imageUrl}
-            style={styles.image}
-            contentFit="cover"
-            priority="high"
-          />
-        </View>
-        <RenderHTML
-          source={{ html: content }}
-          renderers={renderers}
-          WebView={WebView}
-          contentWidth={width - 17 * 2}
-          tagsStyles={{
-            ...tagsStyle,
-            body: { ...tagsStyle.body, color: theme.foregroundBase },
-          }}
-          enableExperimentalMarginCollapsing
-          customHTMLElementModels={customHTMLElementModels}
-          renderersProps={{
-            iframe: {
-              scalesPageToFit: true,
-            },
-          }}
-        />
-        <View
-          style={{
-            marginTop: 24,
-            paddingBottom: 24,
-            gap: 16,
-          }}
-        >
-          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-            <Image
-              source={article.author.avatarUrl}
-              contentFit="cover"
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 999,
-                overflow: 'hidden',
-              }}
-            />
-            <Text style={{ color: theme.foregroundBase }}>
-              {article.author.name}
-            </Text>
-          </View>
-          {!!article.tags.length && (
-            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-              {article.tags.map((tag) => (
-                <Text
-                  key={tag.id}
-                  style={{
-                    paddingVertical: 6,
-                    padding: 8,
-                    paddingHorizontal: 12,
-                    backgroundColor: theme.backgroundBaseElevated,
-                    borderRadius: 12,
-                    fontSize: 12,
-                    color: theme.foregroundBase,
-                  }}
-                >
-                  {tag.value}
-                </Text>
-              ))}
-            </View>
-          )}
-        </View>
-        <Suspense fallback={<ActivityIndicator />}>
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        contentInset={{ bottom: tabBarHeight - insets.bottom }}
+        scrollIndicatorInsets={{ bottom: tabBarHeight - insets.bottom }}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+      >
+        <View style={{ padding: 17 }}>
           <Text
             style={{
+              fontSize: 28,
+              lineHeight: 34,
               fontWeight: '700',
-              paddingVertical: 12,
-              borderBottomWidth: 2,
-              borderColor: theme.borderBase,
+              flexShrink: 1,
+              marginBottom: 8,
               color: theme.foregroundBase,
             }}
           >
-            {article.commentsCount}{' '}
-            {article.commentsCount === 1 ? 'kommentar' : 'kommentarer'}
+            {article.title}
           </Text>
-          <Comments articleId={id} />
-        </Suspense>
-      </View>
-    </ScrollView>
+          <View style={{ marginBottom: 24 }}>
+            <Text style={{ color: theme.foregroundBaseFaded }}>
+              {article.publishedAt.toISOString().slice(0, 10)} &middot;{' '}
+              {article.author.name}
+            </Text>
+          </View>
+          <View style={{ marginBottom: 8 }}>
+            <Image
+              source={article.imageUrl}
+              style={styles.image}
+              contentFit="cover"
+              priority="high"
+            />
+          </View>
+          <RenderHTML
+            source={{ html: content }}
+            renderers={renderers}
+            WebView={WebView}
+            contentWidth={width - 17 * 2}
+            tagsStyles={{
+              ...tagsStyle,
+              body: { ...tagsStyle.body, color: theme.foregroundBase },
+            }}
+            enableExperimentalMarginCollapsing
+            customHTMLElementModels={customHTMLElementModels}
+            renderersProps={{
+              iframe: {
+                scalesPageToFit: true,
+              },
+            }}
+          />
+          <View
+            style={{
+              marginTop: 24,
+              paddingBottom: 24,
+              gap: 16,
+            }}
+          >
+            <View
+              style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}
+            >
+              <Image
+                source={article.author.avatarUrl}
+                contentFit="cover"
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 999,
+                  overflow: 'hidden',
+                }}
+              />
+              <Text style={{ color: theme.foregroundBase }}>
+                {article.author.name}
+              </Text>
+            </View>
+            {!!article.tags.length && (
+              <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                {article.tags.map((tag) => (
+                  <Text
+                    key={tag.id}
+                    style={{
+                      paddingVertical: 6,
+                      padding: 8,
+                      paddingHorizontal: 12,
+                      backgroundColor: theme.backgroundBaseElevated,
+                      borderRadius: 12,
+                      fontSize: 12,
+                      color: theme.foregroundBase,
+                    }}
+                  >
+                    {tag.value}
+                  </Text>
+                ))}
+              </View>
+            )}
+          </View>
+          <Suspense fallback={<ActivityIndicator />}>
+            <Text
+              style={{
+                fontWeight: '700',
+                paddingVertical: 12,
+                borderBottomWidth: 2,
+                borderColor: theme.borderBase,
+                color: theme.foregroundBase,
+              }}
+            >
+              {article.commentsCount}{' '}
+              {article.commentsCount === 1 ? 'kommentar' : 'kommentarer'}
+            </Text>
+            <Comments articleId={id} />
+          </Suspense>
+        </View>
+      </ScrollView>
+    </>
   )
 }
+
+const renderers = {
+  iframe: IframeRenderer,
+} satisfies CustomTagRendererRecord
+
+const customHTMLElementModels = {
+  iframe: iframeModel,
+} satisfies HTMLElementModelRecord
 
 interface CommentsProps {
   articleId: string

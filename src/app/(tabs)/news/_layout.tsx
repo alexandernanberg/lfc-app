@@ -1,7 +1,5 @@
-import { BlurView } from 'expo-blur'
 import { Stack } from 'expo-router'
-import { StyleSheet, TouchableOpacity } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { TouchableOpacity } from 'react-native'
 import SFSymbol from 'sweet-sfsymbols'
 import { useTheme } from '~/components/theme-context'
 import { alphaColor } from '~/theme'
@@ -16,11 +14,8 @@ export default function Layout() {
         headerShadowVisible: false,
         headerTransparent: true,
         headerStyle: {
-          backgroundColor: alphaColor(theme.backgroundBase, 0.6),
+          backgroundColor: alphaColor(theme.backgroundBase, 0),
         },
-        headerBackground: () => (
-          <BlurView intensity={100} style={StyleSheet.absoluteFill} />
-        ),
         contentStyle: {
           backgroundColor: theme.backgroundBase,
         },
@@ -29,20 +24,21 @@ export default function Layout() {
       <Stack.Screen
         name="index"
         options={{
-          header: () => <StatusBarBackground />,
+          title: 'Nyheter',
+          headerShown: false,
         }}
       />
       <Stack.Screen
         name="[id]"
         options={{
           title: '',
-          headerRight: () => (
+          headerRight: ({ tintColor }) => (
             <TouchableOpacity>
               <SFSymbol
                 name="square.and.arrow.up"
                 weight="light"
                 scale="small"
-                colors={[theme.foregroundAction]}
+                colors={[tintColor!]}
                 size={25}
               />
             </TouchableOpacity>
@@ -50,22 +46,5 @@ export default function Layout() {
         }}
       />
     </Stack>
-  )
-}
-
-function StatusBarBackground() {
-  const theme = useTheme()
-  const insets = useSafeAreaInsets()
-  return (
-    <BlurView
-      intensity={100}
-      style={[
-        StyleSheet.absoluteFill,
-        {
-          height: insets.top,
-          backgroundColor: alphaColor(theme.backgroundBase, 0.6),
-        },
-      ]}
-    />
   )
 }
