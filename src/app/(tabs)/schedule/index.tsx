@@ -6,18 +6,12 @@ import type { Locale } from 'date-fns/locale'
 import { sv } from 'date-fns/locale'
 import { Image } from 'expo-image'
 import { Suspense, useMemo, useRef, useState } from 'react'
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native'
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { Fixture } from '~/api'
 import { listFixtures } from '~/api'
 import { AnimatedHeaderBackground } from '~/components/animated-header-background'
+import { ScreenAcitivityIndicator } from '~/components/screen-activity-indicator'
 import { ScrollProvider, useScrollContext } from '~/components/scroll-context'
 import { useTheme } from '~/components/theme-context'
 import { useInterval } from '~/lib/use-interval'
@@ -27,13 +21,7 @@ export default function App() {
   return (
     <ScrollProvider>
       <AnimatedHeaderBackground />
-      <Suspense
-        fallback={
-          <View style={styles.loader}>
-            <ActivityIndicator />
-          </View>
-        }
-      >
+      <Suspense fallback={<ScreenAcitivityIndicator />}>
         <List />
       </Suspense>
     </ScrollProvider>
@@ -275,11 +263,6 @@ function RelativeTime({ date }: RelativeTimeProps) {
 const ROW_HEIGHT = 100
 
 const styles = StyleSheet.create({
-  loader: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   card: {
     paddingVertical: 17,
     flex: 1,

@@ -27,6 +27,7 @@ import SFSymbol from 'sweet-sfsymbols'
 import type { Comment } from '~/api'
 import { getArticle, getComments } from '~/api'
 import { AnimatedHeaderBackground } from '~/components/animated-header-background'
+import { ScreenAcitivityIndicator } from '~/components/screen-activity-indicator'
 import { ScrollProvider, useScrollContext } from '~/components/scroll-context'
 import { useTheme } from '~/components/theme-context'
 import { DistanceTime } from '~/lib/use-relative-time-formatter'
@@ -35,13 +36,7 @@ export default function Page() {
   return (
     <ScrollProvider>
       <AnimatedHeaderBackground />
-      <Suspense
-        fallback={
-          <View style={styles.loader}>
-            <ActivityIndicator />
-          </View>
-        }
-      >
+      <Suspense fallback={<ScreenAcitivityIndicator />}>
         <Content />
       </Suspense>
     </ScrollProvider>
@@ -394,11 +389,6 @@ const tagsStyle = {
 } as const
 
 const styles = StyleSheet.create({
-  loader: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   image: {
     aspectRatio: '4/3',
     borderRadius: 12,
