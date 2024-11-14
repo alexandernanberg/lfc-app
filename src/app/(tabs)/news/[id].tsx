@@ -35,18 +35,15 @@ export default function Page() {
   return (
     <ScrollProvider>
       <AnimatedHeaderBackground />
-
-      <View style={styles.container}>
-        <Suspense
-          fallback={
-            <View style={styles.loader}>
-              <ActivityIndicator />
-            </View>
-          }
-        >
-          <Content />
-        </Suspense>
-      </View>
+      <Suspense
+        fallback={
+          <View style={styles.loader}>
+            <ActivityIndicator />
+          </View>
+        }
+      >
+        <Content />
+      </Suspense>
     </ScrollProvider>
   )
 }
@@ -67,10 +64,7 @@ function Content() {
 
   let content = `<p><strong>${article.excerpt}</strong></p>`
   content += article.content
-    .replace(
-      /<figure><img data-emoji="🚩" alt="🚩" .+><\/figure>\s<p>.+<\/p>/g,
-      '',
-    )
+    .replace(/<hr>[\s\S]*?<figure>[\s\S]*?data-emoji="🚩"[\s\S]*/g, '')
     .replace(/<p>\*&nbsp;(.|\s)+<\/p>\s<figure.+<\/figure>/g, '')
 
   return (
@@ -123,7 +117,10 @@ function Content() {
           <View style={{ marginBottom: 8 }}>
             <Image
               source={article.imageUrl}
-              style={styles.image}
+              style={[
+                styles.image,
+                { backgroundColor: theme.backgroundBaseElevated },
+              ]}
               contentFit="cover"
               priority="high"
             />
@@ -401,9 +398,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  container: {
-    flex: 1,
   },
   image: {
     aspectRatio: '4/3',

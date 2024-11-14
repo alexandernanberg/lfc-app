@@ -3,7 +3,7 @@ import { useScrollToTop } from '@react-navigation/native'
 import { useSuspenseInfiniteQuery } from '@tanstack/react-query'
 import { Image } from 'expo-image'
 import { Link } from 'expo-router'
-import { Suspense, memo, useCallback, useRef } from 'react'
+import { Suspense, useCallback, useRef } from 'react'
 import {
   ActivityIndicator,
   FlatList,
@@ -26,17 +26,15 @@ export default function App() {
   return (
     <ScrollProvider>
       <AnimatedHeaderBackground />
-      <View style={styles.container}>
-        <Suspense
-          fallback={
-            <View style={styles.loader}>
-              <ActivityIndicator />
-            </View>
-          }
-        >
-          <List />
-        </Suspense>
-      </View>
+      <Suspense
+        fallback={
+          <View style={styles.loader}>
+            <ActivityIndicator />
+          </View>
+        }
+      >
+        <List />
+      </Suspense>
     </ScrollProvider>
   )
 }
@@ -51,7 +49,7 @@ function List() {
   const { data, isRefetching, refetch, fetchNextPage, isFetchingNextPage } =
     useSuspenseInfiniteQuery({
       queryKey: ['articles'],
-      queryFn: ({ pageParam }) => listArticles(limit, pageParam * limit),
+      queryFn: ({ pageParam }) => listArticles(limit, (pageParam - 1) * limit),
       initialPageParam: 1,
       getNextPageParam: (firstPage, allPages, lastPageParam) =>
         lastPageParam + 1,
@@ -72,7 +70,7 @@ function List() {
   const ref = useRef<FlatList<Article>>(null)
   useScrollToTop(
     useRef({
-      scrollToTop: () => ref.current?.scrollToOffset({ offset: offsetY }),
+      scrollToTop: () => ref.current?.scrollToIndex({ index: 0 }),
     }),
   )
 
@@ -91,13 +89,21 @@ function List() {
         <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} />
       }
       renderItem={({ item, index }) => (
-        <MemoCard post={item} featured={index === 0} />
+        <Card post={item} featured={index === 0} />
       )}
       ListFooterComponent={
         isFetchingNextPage ? (
           <ActivityIndicator style={{ marginTop: 32, marginBottom: 32 }} />
         ) : null
       }
+      getItemLayout={(_, index) => {
+        const height = index === 0 ? CARD_FEATURED_HEIGHT : CARD_ROW_HEIGHT
+        return {
+          index,
+          length: height,
+          offset: height * index + offsetY,
+        }
+      }}
       onEndReached={onEndReched}
       onEndReachedThreshold={0.5}
       onScroll={onScroll}
@@ -111,6 +117,9 @@ interface CardProps {
   featured: boolean
 }
 
+const CARD_ROW_HEIGHT = 110
+const CARD_FEATURED_HEIGHT = 446
+
 function Card({ post, featured }: CardProps) {
   const theme = useTheme()
   const href = `/news/${post.id}`
@@ -123,12 +132,16 @@ function Card({ post, featured }: CardProps) {
             ...styles.card,
             flexDirection: 'column',
             borderBottomColor: theme.borderBase,
+            height: CARD_FEATURED_HEIGHT,
           }}
         >
           <Image
             source={post.imageUrl}
             recyclingKey={post.id}
-            style={[styles.image, { width: '100%' }]}
+            style={[
+              styles.image,
+              { width: '100%', backgroundColor: theme.backgroundBaseElevated },
+            ]}
             contentFit="cover"
           />
           <View>
@@ -172,7 +185,11 @@ function Card({ post, featured }: CardProps) {
   return (
     <Link href={href} asChild>
       <Pressable
-        style={{ ...styles.card, borderBottomColor: theme.borderBase }}
+        style={{
+          ...styles.card,
+          height: CARD_ROW_HEIGHT,
+          borderBottomColor: theme.borderBase,
+        }}
       >
         <View style={{ flex: 1 }}>
           <Text
@@ -186,15 +203,16 @@ function Card({ post, featured }: CardProps) {
         <Image
           source={post.imageUrl}
           recyclingKey={post.id}
-          style={styles.image}
+          style={[
+            styles.image,
+            { backgroundColor: theme.backgroundBaseElevated },
+          ]}
           contentFit="cover"
         />
       </Pressable>
     </Link>
   )
 }
-
-const MemoCard = memo(Card)
 
 interface CardFooterProps {
   post: Article
@@ -248,9 +266,6 @@ function CardFooter({ post }: CardFooterProps) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   loader: {
     flex: 1,
     alignItems: 'center',

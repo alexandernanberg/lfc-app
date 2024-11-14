@@ -27,17 +27,15 @@ export default function App() {
   return (
     <ScrollProvider>
       <AnimatedHeaderBackground />
-      <View style={styles.container}>
-        <Suspense
-          fallback={
-            <View style={styles.loader}>
-              <ActivityIndicator />
-            </View>
-          }
-        >
-          <List />
-        </Suspense>
-      </View>
+      <Suspense
+        fallback={
+          <View style={styles.loader}>
+            <ActivityIndicator />
+          </View>
+        }
+      >
+        <List />
+      </Suspense>
     </ScrollProvider>
   )
 }
@@ -277,9 +275,6 @@ function RelativeTime({ date }: RelativeTimeProps) {
 const ROW_HEIGHT = 100
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   loader: {
     flex: 1,
     alignItems: 'center',
@@ -296,14 +291,5 @@ const styles = StyleSheet.create({
   image: {
     height: 17,
     width: 17,
-    // aspectRatio: '1/1'
   },
-  // title: {
-  //   fontSize: 17,
-  //   fontWeight: '600',
-  //   lineHeight: 22,
-  //   minWidth: 0,
-  //   flexShrink: 1,
-  //   marginBottom: 12,
-  // },
 })
