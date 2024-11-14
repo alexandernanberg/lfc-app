@@ -32,7 +32,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   web: {
     favicon: './assets/favicon.png',
   },
-  experiments: {},
+  experiments: {
+    reactCompiler: true,
+  },
   newArchEnabled: true,
   plugins: ['expo-router'],
   extra: {
