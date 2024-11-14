@@ -33,6 +33,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     favicon: './assets/favicon.png',
   },
   experiments: {},
+  newArchEnabled: true,
   plugins: ['expo-router'],
   extra: {
     eas: {
