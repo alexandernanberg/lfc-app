@@ -54,13 +54,12 @@ function List() {
 
   const lastFixture = useMemo(() => findLastFixture(data), [data])
   const lastFixtureIndex = lastFixture ? data.indexOf(lastFixture) : 0
-  const initialScrollOffset = lastFixtureIndex * ROW_HEIGHT + offsetY
 
   const ref = useRef<FlatList<Fixture>>(null)
   useScrollToTop(
     useRef({
       scrollToTop: () =>
-        ref.current?.scrollToOffset({ offset: initialScrollOffset }),
+        ref.current?.scrollToIndex({ index: lastFixtureIndex }),
     }),
   )
 
@@ -76,13 +75,13 @@ function List() {
         paddingHorizontal: 17,
       }}
       renderItem={({ item }) => <Card key={item.id} fixture={item} />}
-      onLayout={() => {
-        // TODO: investigate why doing this in a layout effect doesn't work
-        ref.current?.scrollToOffset({
-          offset: initialScrollOffset,
-          animated: false,
-        })
-      }}
+      getItemLayout={(_, index) => ({
+        index,
+        length: ROW_HEIGHT,
+        offset: ROW_HEIGHT * index + offsetY,
+      })}
+      initialNumToRender={lastFixtureIndex + 10}
+      initialScrollIndex={lastFixtureIndex}
       onScroll={onScroll}
       scrollEventThrottle={16}
     />
