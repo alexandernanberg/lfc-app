@@ -68,12 +68,15 @@ function normalizeArticle(input: unknown): Article {
   return {
     id: `${input.NewsId}`,
     title: input.Title,
-    excerpt: input.Preamble,
+    excerpt: input.Preamble.replace(/<[^>]*>/g, ''),
     imageUrl: input.ImageName,
     publishedAt: new Date(input.CreatedDate),
     commentsCount: input.NumberOfComments ?? 0,
     slug: input.Url,
-    content: input.ContentText,
+    url: `https://lfc.nu${input.Url ?? ''}`,
+    content: (input.ContentText ?? '')
+      .replace(/<hr>[\s\S]*?<figure>[\s\S]*?data-emoji="🚩"[\s\S]*/g, '')
+      .replace(/<p>\*&nbsp;(.|\s)+<\/p>\s<figure.+<\/figure>/g, ''),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     tags:
       input.TagList?.map((tag: any) => ({
@@ -153,6 +156,7 @@ interface User {
 export interface Article {
   id: string
   slug: string
+  url: string
   title: string
   excerpt: string
   publishedAt: Date

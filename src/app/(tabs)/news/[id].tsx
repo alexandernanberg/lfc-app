@@ -57,10 +57,7 @@ function Content() {
     queryKey: ['article', id],
   })
 
-  let content = `<p><strong>${article.excerpt}</strong></p>`
-  content += article.content
-    .replace(/<hr>[\s\S]*?<figure>[\s\S]*?data-emoji="🚩"[\s\S]*/g, '')
-    .replace(/<p>\*&nbsp;(.|\s)+<\/p>\s<figure.+<\/figure>/g, '')
+  const content = `<p><strong>${article.excerpt}</strong></p>${article.content}`
 
   return (
     <>
@@ -69,7 +66,7 @@ function Content() {
           headerRight: () => (
             <TouchableOpacity
               onPress={async () => {
-                await Sharing.shareAsync(`https://lfc.nu${article.slug}`)
+                await Sharing.shareAsync(article.url)
               }}
             >
               <SFSymbol
@@ -183,18 +180,6 @@ function Content() {
             )}
           </View>
           <Suspense fallback={<ActivityIndicator />}>
-            <Text
-              style={{
-                fontWeight: '700',
-                paddingVertical: 12,
-                borderBottomWidth: 2,
-                borderColor: theme.borderBase,
-                color: theme.foregroundBase,
-              }}
-            >
-              {article.commentsCount}{' '}
-              {article.commentsCount === 1 ? 'kommentar' : 'kommentarer'}
-            </Text>
             <Comments articleId={id} />
           </Suspense>
         </View>
@@ -216,6 +201,8 @@ interface CommentsProps {
 }
 
 function Comments({ articleId }: CommentsProps) {
+  const theme = useTheme()
+
   const { data: comments } = useSuspenseQuery({
     queryFn: () => getComments(articleId),
     queryKey: ['article-comments', articleId],
@@ -223,19 +210,32 @@ function Comments({ articleId }: CommentsProps) {
   })
 
   return (
-    <View style={{ flex: 1, gap: 16, paddingBottom: 32, paddingTop: 16 }}>
-      {comments.map((comment) => (
-        <Comment key={comment.id} comment={comment}>
-          {!!comment.replies.length && (
-            <View style={{ paddingLeft: 40, paddingTop: 12, gap: 12 }}>
-              {comment.replies.map((reply) => (
-                <Comment key={reply.id} comment={reply} />
-              ))}
-            </View>
-          )}
-        </Comment>
-      ))}
-    </View>
+    <>
+      <Text
+        style={{
+          fontWeight: '700',
+          paddingVertical: 12,
+          borderBottomWidth: 2,
+          borderColor: theme.borderBase,
+          color: theme.foregroundBase,
+        }}
+      >
+        {comments.length} {comments.length === 1 ? 'kommentar' : 'kommentarer'}
+      </Text>
+      <View style={{ flex: 1, gap: 16, paddingBottom: 32, paddingTop: 16 }}>
+        {comments.map((comment) => (
+          <Comment key={comment.id} comment={comment}>
+            {!!comment.replies.length && (
+              <View style={{ paddingLeft: 40, paddingTop: 12, gap: 12 }}>
+                {comment.replies.map((reply) => (
+                  <Comment key={reply.id} comment={reply} />
+                ))}
+              </View>
+            )}
+          </Comment>
+        ))}
+      </View>
+    </>
   )
 }
 
