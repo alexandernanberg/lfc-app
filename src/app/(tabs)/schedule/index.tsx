@@ -11,7 +11,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { Fixture } from '~/api'
 import { listFixtures } from '~/api'
 import { AnimatedHeaderBackground } from '~/components/animated-header-background'
-import { ScreenAcitivityIndicator } from '~/components/screen-activity-indicator'
 import { ScrollProvider, useScrollContext } from '~/components/scroll-context'
 import { useTheme } from '~/components/theme-context'
 import { useInterval } from '~/lib/use-interval'
@@ -21,7 +20,7 @@ export default function App() {
   return (
     <ScrollProvider>
       <AnimatedHeaderBackground />
-      <Suspense fallback={<ScreenAcitivityIndicator />}>
+      <Suspense fallback={null}>
         <List />
       </Suspense>
     </ScrollProvider>

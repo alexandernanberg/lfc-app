@@ -18,7 +18,6 @@ import SFSymbol from 'sweet-sfsymbols'
 import type { Article } from '~/api'
 import { listArticles } from '~/api'
 import { AnimatedHeaderBackground } from '~/components/animated-header-background'
-import { ScreenAcitivityIndicator } from '~/components/screen-activity-indicator'
 import { ScrollProvider, useScrollContext } from '~/components/scroll-context'
 import { useTheme } from '~/components/theme-context'
 import { RelativeTime } from '~/lib/use-relative-time-formatter'
@@ -27,7 +26,7 @@ export default function App() {
   return (
     <ScrollProvider>
       <AnimatedHeaderBackground />
-      <Suspense fallback={<ScreenAcitivityIndicator />}>
+      <Suspense fallback={null}>
         <List />
       </Suspense>
     </ScrollProvider>
