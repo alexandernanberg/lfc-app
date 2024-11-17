@@ -16,10 +16,10 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import SFSymbol from 'sweet-sfsymbols'
 import type { Article } from '~/api'
-import { listArticles } from '~/api'
 import { AnimatedHeaderBackground } from '~/components/animated-header-background'
 import { ScrollProvider, useScrollContext } from '~/components/scroll-context'
 import { useTheme } from '~/components/theme-context'
+import { newsfeedQuery } from '~/lib/queries'
 import { RelativeTime } from '~/lib/use-relative-time-formatter'
 
 export default function App() {
@@ -38,16 +38,8 @@ function List() {
   const tabBarHeight = useBottomTabBarHeight()
   const { onScroll, offsetY } = useScrollContext()
 
-  const limit = 10
-
   const { data, isRefetching, refetch, fetchNextPage, isFetchingNextPage } =
-    useSuspenseInfiniteQuery({
-      queryKey: ['articles'],
-      queryFn: ({ pageParam }) => listArticles(limit, (pageParam - 1) * limit),
-      initialPageParam: 1,
-      getNextPageParam: (firstPage, allPages, lastPageParam) =>
-        lastPageParam + 1,
-    })
+    useSuspenseInfiniteQuery(newsfeedQuery)
 
   const onRefresh = useCallback(async () => {
     await refetch()

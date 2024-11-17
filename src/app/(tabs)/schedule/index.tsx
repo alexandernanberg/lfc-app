@@ -9,10 +9,10 @@ import { Suspense, useMemo, useRef, useState } from 'react'
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { Fixture } from '~/api'
-import { listFixtures } from '~/api'
 import { AnimatedHeaderBackground } from '~/components/animated-header-background'
 import { ScrollProvider, useScrollContext } from '~/components/scroll-context'
 import { useTheme } from '~/components/theme-context'
+import { fixturesQuery } from '~/lib/queries'
 import { useInterval } from '~/lib/use-interval'
 import { capitalizeFirstLetter } from '~/utils'
 
@@ -32,10 +32,7 @@ function List() {
   const tabBarHeight = useBottomTabBarHeight()
   const { onScroll, offsetY } = useScrollContext()
 
-  const { data } = useSuspenseQuery({
-    queryKey: ['fixtures'],
-    queryFn: () => listFixtures(),
-  })
+  const { data } = useSuspenseQuery(fixturesQuery)
 
   const lastFixture = useMemo(() => findLastFixture(data), [data])
   const lastFixtureIndex = lastFixture ? data.indexOf(lastFixture) : 0

@@ -25,10 +25,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import WebView from 'react-native-webview'
 import SFSymbol from 'sweet-sfsymbols'
 import type { Comment } from '~/api'
-import { getArticle, getComments } from '~/api'
 import { AnimatedHeaderBackground } from '~/components/animated-header-background'
 import { ScrollProvider, useScrollContext } from '~/components/scroll-context'
 import { useTheme } from '~/components/theme-context'
+import { newsArticleCommentsQuery, newsArticleQuery } from '~/lib/queries'
 import { DistanceTime } from '~/lib/use-relative-time-formatter'
 
 export default function Page() {
@@ -50,11 +50,7 @@ function Content() {
   const { onScroll } = useScrollContext()
 
   const id = useLocalSearchParams().id as string
-
-  const { data: article } = useSuspenseQuery({
-    queryFn: () => getArticle(id),
-    queryKey: ['article', id],
-  })
+  const { data: article } = useSuspenseQuery(newsArticleQuery(id))
 
   const content = `<p><strong>${article.excerpt}</strong></p>${article.content}`
 
@@ -202,11 +198,9 @@ interface CommentsProps {
 function Comments({ articleId }: CommentsProps) {
   const theme = useTheme()
 
-  const { data: comments } = useSuspenseQuery({
-    queryFn: () => getComments(articleId),
-    queryKey: ['article-comments', articleId],
-    refetchInterval: 60_000,
-  })
+  const { data: comments } = useSuspenseQuery(
+    newsArticleCommentsQuery(articleId),
+  )
 
   return (
     <>
