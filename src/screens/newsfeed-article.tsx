@@ -2,7 +2,7 @@ import IframeRenderer, { iframeModel } from '@native-html/iframe-plugin'
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
 import type { StaticScreenProps } from '@react-navigation/native'
 import { useNavigation } from '@react-navigation/native'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { Image } from 'expo-image'
 import * as Sharing from 'expo-sharing'
 import type { ReactNode } from 'react'
@@ -77,15 +77,20 @@ function Content({ id }: { id: string }) {
   const { onScroll } = useScrollContext()
   const navigation = useNavigation()
 
-  const { data: article } = useSuspenseQuery(newsArticleQuery(id))
-
-  const content = `<p><strong>${article.excerpt}</strong></p>${article.content}`
+  // TODO: Use suspense query when it works with placeholder data
+  const { data: article } = useQuery(newsArticleQuery(id))
 
   useEffect(() => {
     navigation.setOptions({
-      headerRight: () => <NewsfeedArticleShareButton url={article.url} />,
+      headerRight: () => <NewsfeedArticleShareButton url={article?.url} />,
     })
-  }, [article.url, navigation, theme.foregroundAction])
+  }, [article?.url, navigation])
+
+  if (!article) {
+    return null
+  }
+
+  const content = `<p><strong>${article.excerpt}</strong></p>${article.content}`
 
   return (
     <ScrollView

@@ -134,7 +134,6 @@ function Card({ post, featured }: CardProps) {
       >
         <Image
           source={post.imageUrl}
-          recyclingKey={post.id}
           style={[
             styles.image,
             { width: '100%', backgroundColor: theme.backgroundBaseElevated },
@@ -198,7 +197,6 @@ function Card({ post, featured }: CardProps) {
       </View>
       <Image
         source={post.imageUrl}
-        recyclingKey={post.id}
         style={[
           styles.image,
           { backgroundColor: theme.backgroundBaseElevated },

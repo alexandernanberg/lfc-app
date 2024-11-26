@@ -69,7 +69,7 @@ function normalizeArticle(input: unknown): Article {
     id: `${input.NewsId}`,
     title: input.Title,
     excerpt: input.Preamble.replace(/<[^>]*>/g, ''),
-    imageUrl: input.ImageName,
+    imageUrl: input.ImageName.replace(/w_\d*/, 'w_600'),
     publishedAt: new Date(input.CreatedDate),
     commentsCount: input.NumberOfComments ?? 0,
     slug: input.Url,
