@@ -35,14 +35,21 @@ export async function getComments(id: string) {
   return data.map((item) => normalizeComment(item))
 }
 
+export async function listSeasons() {
+  const url = new URL(`${API_URL}/Fixture/GetSeasonList`)
+  const res = await fetch(url.toString())
+  const data = (await res.json()) as Array<unknown>
+
+  return data.map((item) => normalizeSeason(item))
+}
+
 export async function listFixtures() {
+  const seasons = await listSeasons()
+  const seasonId = seasons.at(0)?.id ?? '36'
+
   const url = new URL(`${API_URL}/Fixture/GetFixture`)
-  url.searchParams.set('seasonId', '36')
-  const res = await fetch(url.toString(), {
-    headers: {
-      // 'x-api-key': '522DD582EEE242D9B0E94978015C9D35',
-    },
-  })
+  url.searchParams.set('seasonId', seasonId)
+  const res = await fetch(url.toString())
   const data = (await res.json()) as Array<unknown>
 
   return data
@@ -141,6 +148,17 @@ export function normalizeFixture(input: unknown): Fixture {
   }
 }
 
+export function normalizeSeason(input: unknown): Season {
+  if (!isObject(input)) {
+    throw new Error('Invalid fixture')
+  }
+
+  return {
+    id: input.SeasonId,
+    name: input.Name,
+  }
+}
+
 interface Tag {
   id: number
   value: string
@@ -176,6 +194,11 @@ export interface Comment {
   comment: string
   numberOfLikes: number
   replies: Array<Comment>
+}
+
+export interface Season {
+  id: string
+  name: string
 }
 
 export interface Fixture {
