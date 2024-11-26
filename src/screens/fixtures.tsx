@@ -16,7 +16,7 @@ import { fixturesQuery } from '~/lib/queries'
 import { useInterval } from '~/lib/use-interval'
 import { capitalizeFirstLetter } from '~/utils'
 
-export default function App() {
+export function FixturesScreen() {
   return (
     <ScrollProvider>
       <AnimatedHeaderBackground />

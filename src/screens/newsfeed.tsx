@@ -1,8 +1,7 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
-import { useScrollToTop } from '@react-navigation/native'
+import { useNavigation, useScrollToTop } from '@react-navigation/native'
 import { useSuspenseInfiniteQuery } from '@tanstack/react-query'
 import { Image } from 'expo-image'
-import { Link } from 'expo-router'
 import { Suspense, useCallback, useRef } from 'react'
 import {
   ActivityIndicator,
@@ -22,7 +21,7 @@ import { useTheme } from '~/components/theme-context'
 import { newsfeedQuery } from '~/lib/queries'
 import { RelativeTime } from '~/lib/use-relative-time-formatter'
 
-export default function App() {
+export function NewsfeedScreen() {
   return (
     <ScrollProvider>
       <AnimatedHeaderBackground />
@@ -108,95 +107,105 @@ const CARD_FEATURED_HEIGHT = 446
 
 function Card({ post, featured }: CardProps) {
   const theme = useTheme()
-  const href = `/news/${post.id}`
+  const navigation = useNavigation()
+
+  const navigateToArticle = () => {
+    navigation.navigate('Home', {
+      screen: 'Newsfeed',
+      params: {
+        screen: 'NewsfeedArticle',
+        params: {
+          id: post.id,
+        },
+      },
+    })
+  }
 
   if (featured) {
     return (
-      <Link href={href} asChild>
-        <Pressable
-          style={{
-            ...styles.card,
-            flexDirection: 'column',
-            borderBottomColor: theme.borderBase,
-            height: CARD_FEATURED_HEIGHT,
-          }}
-        >
-          <Image
-            source={post.imageUrl}
-            recyclingKey={post.id}
-            style={[
-              styles.image,
-              { width: '100%', backgroundColor: theme.backgroundBaseElevated },
-            ]}
-            contentFit="cover"
-          />
-          <View>
-            <Text
-              style={[
-                styles.title,
-                {
-                  fontSize: 21,
-                  lineHeight: 27,
-                  marginTop: 4,
-                  marginBottom: 4,
-                  fontWeight: '700',
-                  color: theme.foregroundBase,
-                },
-              ]}
-              numberOfLines={2}
-            >
-              {post.title}
-            </Text>
-            <Text
-              style={[
-                {
-                  fontSize: 15,
-                  lineHeight: 20,
-                  marginBottom: 12,
-                  color: theme.foregroundBase,
-                },
-              ]}
-              numberOfLines={2}
-            >
-              {post.excerpt}
-            </Text>
-
-            <CardFooter post={post} />
-          </View>
-        </Pressable>
-      </Link>
-    )
-  }
-
-  return (
-    <Link href={href} asChild>
       <Pressable
         style={{
           ...styles.card,
-          height: CARD_ROW_HEIGHT,
+          flexDirection: 'column',
           borderBottomColor: theme.borderBase,
+          height: CARD_FEATURED_HEIGHT,
         }}
+        onPress={navigateToArticle}
       >
-        <View style={{ flex: 1 }}>
-          <Text
-            style={[styles.title, { color: theme.foregroundBase }]}
-            numberOfLines={2}
-          >
-            {post.title}
-          </Text>
-          <CardFooter post={post} />
-        </View>
         <Image
           source={post.imageUrl}
           recyclingKey={post.id}
           style={[
             styles.image,
-            { backgroundColor: theme.backgroundBaseElevated },
+            { width: '100%', backgroundColor: theme.backgroundBaseElevated },
           ]}
           contentFit="cover"
         />
+        <View>
+          <Text
+            style={[
+              styles.title,
+              {
+                fontSize: 21,
+                lineHeight: 27,
+                marginTop: 4,
+                marginBottom: 4,
+                fontWeight: '700',
+                color: theme.foregroundBase,
+              },
+            ]}
+            numberOfLines={2}
+          >
+            {post.title}
+          </Text>
+          <Text
+            style={[
+              {
+                fontSize: 15,
+                lineHeight: 20,
+                marginBottom: 12,
+                color: theme.foregroundBase,
+              },
+            ]}
+            numberOfLines={2}
+          >
+            {post.excerpt}
+          </Text>
+
+          <CardFooter post={post} />
+        </View>
       </Pressable>
-    </Link>
+    )
+  }
+
+  return (
+    <Pressable
+      style={{
+        ...styles.card,
+        height: CARD_ROW_HEIGHT,
+        borderBottomColor: theme.borderBase,
+      }}
+      onPress={navigateToArticle}
+    >
+      <View style={{ flex: 1 }}>
+        <Text
+          style={[styles.title, { color: theme.foregroundBase }]}
+          numberOfLines={2}
+        >
+          {post.title}
+        </Text>
+        <CardFooter post={post} />
+      </View>
+      <Image
+        source={post.imageUrl}
+        recyclingKey={post.id}
+        style={[
+          styles.image,
+          { backgroundColor: theme.backgroundBaseElevated },
+        ]}
+        contentFit="cover"
+      />
+    </Pressable>
   )
 }
 

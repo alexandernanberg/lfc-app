@@ -1,11 +1,12 @@
 import IframeRenderer, { iframeModel } from '@native-html/iframe-plugin'
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
+import type { StaticScreenProps } from '@react-navigation/native'
+import { useNavigation } from '@react-navigation/native'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Image } from 'expo-image'
-import { Stack, useLocalSearchParams } from 'expo-router'
 import * as Sharing from 'expo-sharing'
 import type { ReactNode } from 'react'
-import { Suspense } from 'react'
+import { Suspense, useEffect } from 'react'
 import {
   ActivityIndicator,
   Pressable,
@@ -31,155 +32,164 @@ import { useTheme } from '~/components/theme-context'
 import { newsArticleCommentsQuery, newsArticleQuery } from '~/lib/queries'
 import { DistanceTime } from '~/lib/use-relative-time-formatter'
 
-export default function Page() {
+type Props = StaticScreenProps<{
+  id: string
+}>
+
+export function NewsfeedArticleScreen({ route }: Props) {
   return (
     <ScrollProvider>
       <AnimatedHeaderBackground />
       <Suspense fallback={null}>
-        <Content />
+        <Content id={route.params.id} />
       </Suspense>
     </ScrollProvider>
   )
 }
 
-function Content() {
+export function NewsfeedArticleShareButton({ url }: { url?: string }) {
+  const theme = useTheme()
+
+  return (
+    <TouchableOpacity
+      onPress={async () => {
+        if (url) {
+          await Sharing.shareAsync(url)
+        }
+      }}
+    >
+      <SFSymbol
+        name="square.and.arrow.up"
+        weight="light"
+        scale="small"
+        colors={[theme.foregroundAction]}
+        size={25}
+      />
+    </TouchableOpacity>
+  )
+}
+
+function Content({ id }: { id: string }) {
   const tabBarHeight = useBottomTabBarHeight()
   const insets = useSafeAreaInsets()
   const theme = useTheme()
   const { width } = useWindowDimensions()
   const { onScroll } = useScrollContext()
+  const navigation = useNavigation()
 
-  const id = useLocalSearchParams().id as string
   const { data: article } = useSuspenseQuery(newsArticleQuery(id))
 
   const content = `<p><strong>${article.excerpt}</strong></p>${article.content}`
 
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => <NewsfeedArticleShareButton url={article.url} />,
+    })
+  }, [article.url, navigation, theme.foregroundAction])
+
   return (
-    <>
-      <Stack.Screen
-        options={{
-          headerRight: () => (
-            <TouchableOpacity
-              onPress={async () => {
-                await Sharing.shareAsync(article.url)
-              }}
-            >
-              <SFSymbol
-                name="square.and.arrow.up"
-                weight="light"
-                scale="small"
-                colors={[theme.foregroundAction]}
-                size={25}
-              />
-            </TouchableOpacity>
-          ),
-        }}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        contentInset={{ bottom: tabBarHeight - insets.bottom }}
-        scrollIndicatorInsets={{ bottom: tabBarHeight - insets.bottom }}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
-      >
-        <View style={{ padding: 17 }}>
-          <Text
-            style={{
-              fontSize: 28,
-              lineHeight: 34,
-              fontWeight: '700',
-              flexShrink: 1,
-              marginBottom: 8,
-              color: theme.foregroundBase,
-            }}
-          >
-            {article.title}
+    <ScrollView
+      contentInsetAdjustmentBehavior="automatic"
+      contentInset={{ bottom: tabBarHeight - insets.bottom }}
+      scrollIndicatorInsets={{ bottom: tabBarHeight - insets.bottom }}
+      onScroll={onScroll}
+      scrollEventThrottle={16}
+    >
+      <View style={{ padding: 17 }}>
+        <Text
+          style={{
+            fontSize: 28,
+            lineHeight: 34,
+            fontWeight: '700',
+            flexShrink: 1,
+            marginBottom: 8,
+            color: theme.foregroundBase,
+          }}
+        >
+          {article.title}
+        </Text>
+        <View style={{ marginBottom: 24 }}>
+          <Text style={{ color: theme.foregroundBaseFaded }}>
+            {article.publishedAt.toISOString().slice(0, 10)} &middot;{' '}
+            {article.author.name}
           </Text>
-          <View style={{ marginBottom: 24 }}>
-            <Text style={{ color: theme.foregroundBaseFaded }}>
-              {article.publishedAt.toISOString().slice(0, 10)} &middot;{' '}
+        </View>
+        <View style={{ marginBottom: 8 }}>
+          <Image
+            source={article.imageUrl}
+            style={[
+              styles.image,
+              { backgroundColor: theme.backgroundBaseElevated },
+            ]}
+            contentFit="cover"
+            priority="high"
+          />
+        </View>
+        <RenderHTML
+          source={{ html: content }}
+          renderers={renderers}
+          WebView={WebView}
+          contentWidth={width - 17 * 2}
+          tagsStyles={{
+            ...tagsStyle,
+            body: { ...tagsStyle.body, color: theme.foregroundBase },
+          }}
+          enableExperimentalMarginCollapsing
+          customHTMLElementModels={customHTMLElementModels}
+          renderersProps={{
+            iframe: {
+              scalesPageToFit: true,
+            },
+          }}
+        />
+        <View
+          style={{
+            marginTop: 24,
+            paddingBottom: 24,
+            gap: 16,
+          }}
+        >
+          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+            <Image
+              source={article.author.avatarUrl}
+              contentFit="cover"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 999,
+                overflow: 'hidden',
+              }}
+            />
+            <Text style={{ color: theme.foregroundBase }}>
               {article.author.name}
             </Text>
           </View>
-          <View style={{ marginBottom: 8 }}>
-            <Image
-              source={article.imageUrl}
-              style={[
-                styles.image,
-                { backgroundColor: theme.backgroundBaseElevated },
-              ]}
-              contentFit="cover"
-              priority="high"
-            />
-          </View>
-          <RenderHTML
-            source={{ html: content }}
-            renderers={renderers}
-            WebView={WebView}
-            contentWidth={width - 17 * 2}
-            tagsStyles={{
-              ...tagsStyle,
-              body: { ...tagsStyle.body, color: theme.foregroundBase },
-            }}
-            enableExperimentalMarginCollapsing
-            customHTMLElementModels={customHTMLElementModels}
-            renderersProps={{
-              iframe: {
-                scalesPageToFit: true,
-              },
-            }}
-          />
-          <View
-            style={{
-              marginTop: 24,
-              paddingBottom: 24,
-              gap: 16,
-            }}
-          >
-            <View
-              style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}
-            >
-              <Image
-                source={article.author.avatarUrl}
-                contentFit="cover"
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 999,
-                  overflow: 'hidden',
-                }}
-              />
-              <Text style={{ color: theme.foregroundBase }}>
-                {article.author.name}
-              </Text>
+          {!!article.tags.length && (
+            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+              {article.tags.map((tag) => (
+                <Text
+                  key={tag.id}
+                  style={{
+                    paddingVertical: 6,
+                    padding: 8,
+                    paddingHorizontal: 12,
+                    backgroundColor: theme.backgroundBaseElevated,
+                    borderRadius: 12,
+                    fontSize: 12,
+                    color: theme.foregroundBase,
+                  }}
+                >
+                  {tag.value}
+                </Text>
+              ))}
             </View>
-            {!!article.tags.length && (
-              <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-                {article.tags.map((tag) => (
-                  <Text
-                    key={tag.id}
-                    style={{
-                      paddingVertical: 6,
-                      padding: 8,
-                      paddingHorizontal: 12,
-                      backgroundColor: theme.backgroundBaseElevated,
-                      borderRadius: 12,
-                      fontSize: 12,
-                      color: theme.foregroundBase,
-                    }}
-                  >
-                    {tag.value}
-                  </Text>
-                ))}
-              </View>
-            )}
-          </View>
-          <Suspense fallback={<ActivityIndicator />}>
-            <Comments articleId={id} />
-          </Suspense>
+          )}
         </View>
-      </ScrollView>
-    </>
+        <Suspense fallback={<ActivityIndicator />}>
+          <Comments articleId={id} />
+        </Suspense>
+      </View>
+    </ScrollView>
   )
 }
 
