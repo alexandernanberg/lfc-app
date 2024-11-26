@@ -18,7 +18,8 @@ import type { Article } from '~/api'
 import { AnimatedHeaderBackground } from '~/components/animated-header-background'
 import { ScrollProvider, useScrollContext } from '~/components/scroll-context'
 import { useTheme } from '~/components/theme-context'
-import { newsfeedQuery } from '~/lib/queries'
+import { newsArticleQuery, newsfeedQuery } from '~/lib/queries'
+import { queryClient } from '~/lib/query-client'
 import { RelativeTime } from '~/lib/use-relative-time-formatter'
 
 export function NewsfeedScreen() {
@@ -121,6 +122,10 @@ function Card({ post, featured }: CardProps) {
     })
   }
 
+  const prefetchArticle = () => {
+    void queryClient.prefetchQuery(newsArticleQuery(post.id))
+  }
+
   if (featured) {
     return (
       <Pressable
@@ -131,6 +136,7 @@ function Card({ post, featured }: CardProps) {
           height: CARD_FEATURED_HEIGHT,
         }}
         onPress={navigateToArticle}
+        onPressIn={prefetchArticle}
       >
         <Image
           source={post.imageUrl}
@@ -185,6 +191,7 @@ function Card({ post, featured }: CardProps) {
         borderBottomColor: theme.borderBase,
       }}
       onPress={navigateToArticle}
+      onPressIn={prefetchArticle}
     >
       <View style={{ flex: 1 }}>
         <Text
