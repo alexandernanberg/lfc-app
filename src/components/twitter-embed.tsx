@@ -1,8 +1,15 @@
 import { useState } from 'react'
-import { Linking, Pressable, StyleSheet, View } from 'react-native'
+import {
+  Linking,
+  Pressable,
+  StyleSheet,
+  useColorScheme,
+  View,
+} from 'react-native'
 import WebView from 'react-native-webview'
 
 function TweetEmbed({ tweetId }: { tweetId: string }) {
+  const colorScheme = useColorScheme()
   const [height, setHeight] = useState(0)
 
   const embedHtml = `
@@ -13,13 +20,17 @@ function TweetEmbed({ tweetId }: { tweetId: string }) {
         <script async src="https://platform.twitter.com/widgets.js"></script>
       </head>
       <style>
-        body {
+        body, html {
           padding: 0;
           margin: 0;
+          background: transparent;
+        }
+        .twitter-tweet {
+          margin: 0 !important;
         }
       </style>
       <body>
-        <blockquote class="twitter-tweet">
+        <blockquote class="twitter-tweet" data-theme="${colorScheme}">
           <a href="https://twitter.com/user/status/${tweetId}"></a>
         </blockquote>
       </body>
@@ -56,6 +67,7 @@ function TweetEmbed({ tweetId }: { tweetId: string }) {
             setHeight(Number(event.nativeEvent.data))
           }}
           scrollEnabled={false}
+          style={{ backgroundColor: 'transparent' }}
         />
       </View>
     </Pressable>
