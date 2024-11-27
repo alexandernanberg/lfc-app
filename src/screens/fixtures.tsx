@@ -41,7 +41,10 @@ function List() {
   useScrollToTop(
     useRef({
       scrollToTop: () =>
-        ref.current?.scrollToIndex({ index: lastFixtureIndex }),
+        ref.current?.scrollToIndex({
+          index: lastFixtureIndex,
+          viewOffset: -offsetY,
+        }),
     }),
   )
 
@@ -53,6 +56,7 @@ function List() {
       contentInsetAdjustmentBehavior="automatic"
       contentInset={{ bottom: tabBarHeight - insets.bottom }}
       scrollIndicatorInsets={{ bottom: tabBarHeight - insets.bottom }}
+      scrollToOverflowEnabled
       style={{
         paddingHorizontal: 17,
       }}
@@ -60,7 +64,7 @@ function List() {
       getItemLayout={(_, index) => ({
         index,
         length: ROW_HEIGHT,
-        offset: ROW_HEIGHT * index + offsetY,
+        offset: ROW_HEIGHT * index,
       })}
       initialNumToRender={lastFixtureIndex + 10}
       initialScrollIndex={lastFixtureIndex}

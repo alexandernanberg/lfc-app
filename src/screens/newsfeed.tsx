@@ -56,7 +56,10 @@ function List() {
   const ref = useRef<FlatList<Article>>(null)
   useScrollToTop(
     useRef({
-      scrollToTop: () => ref.current?.scrollToIndex({ index: 0 }),
+      scrollToTop: () =>
+        ref.current?.scrollToOffset({
+          offset: offsetY,
+        }),
     }),
   )
 
@@ -68,6 +71,7 @@ function List() {
       contentInsetAdjustmentBehavior="automatic"
       contentInset={{ bottom: tabBarHeight - insets.bottom }}
       scrollIndicatorInsets={{ bottom: tabBarHeight - insets.bottom }}
+      scrollToOverflowEnabled
       style={{
         paddingHorizontal: 17,
       }}
@@ -82,14 +86,6 @@ function List() {
           <ActivityIndicator style={{ marginTop: 32, marginBottom: 32 }} />
         ) : null
       }
-      getItemLayout={(_, index) => {
-        const height = index === 0 ? CARD_FEATURED_HEIGHT : CARD_ROW_HEIGHT
-        return {
-          index,
-          length: height,
-          offset: height * index + offsetY,
-        }
-      }}
       onEndReached={onEndReched}
       onEndReachedThreshold={0.5}
       onScroll={onScroll}
@@ -102,9 +98,6 @@ interface CardProps {
   post: Article
   featured: boolean
 }
-
-const CARD_ROW_HEIGHT = 110
-const CARD_FEATURED_HEIGHT = 446
 
 function Card({ post, featured }: CardProps) {
   const theme = useTheme()
@@ -133,7 +126,6 @@ function Card({ post, featured }: CardProps) {
           ...styles.card,
           flexDirection: 'column',
           borderBottomColor: theme.borderBase,
-          height: CARD_FEATURED_HEIGHT,
         }}
         onPress={navigateToArticle}
         onPressIn={prefetchArticle}
@@ -187,7 +179,6 @@ function Card({ post, featured }: CardProps) {
     <Pressable
       style={{
         ...styles.card,
-        height: CARD_ROW_HEIGHT,
         borderBottomColor: theme.borderBase,
       }}
       onPress={navigateToArticle}
