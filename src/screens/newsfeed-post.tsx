@@ -139,6 +139,10 @@ function Content({ id }: { id: string }) {
           tagsStyles={{
             ...tagsStyle,
             body: { ...tagsStyle.body, color: theme.foregroundBase },
+            a: {
+              color: theme.foregroundAction,
+              textDecorationColor: theme.foregroundAction,
+            },
           }}
           enableExperimentalMarginCollapsing
           enableExperimentalBRCollapsing
