@@ -13,7 +13,7 @@ export async function getArticle(id: string) {
   const res = await fetch(url.toString())
   const data = await res.json()
 
-  return normalizeArticle(data)
+  return parseArticle(data)
 }
 
 export async function listArticles(limit = 10, offset = 0) {
@@ -23,7 +23,7 @@ export async function listArticles(limit = 10, offset = 0) {
   const res = await fetch(url.toString())
   const data = (await res.json()) as Array<unknown>
 
-  return data.slice(offset).map((item) => normalizeArticle(item))
+  return data.slice(offset).map((item) => parseArticle(item))
 }
 
 export async function getComments(id: string) {
@@ -32,7 +32,7 @@ export async function getComments(id: string) {
   const res = await fetch(url.toString())
   const data = (await res.json()) as Array<unknown>
 
-  return data.map((item) => normalizeComment(item))
+  return data.map((item) => parseComment(item))
 }
 
 export async function listSeasons() {
@@ -40,7 +40,7 @@ export async function listSeasons() {
   const res = await fetch(url.toString())
   const data = (await res.json()) as Array<unknown>
 
-  return data.map((item) => normalizeSeason(item))
+  return data.map((item) => parseSeason(item))
 }
 
 export async function listFixtures() {
@@ -52,11 +52,7 @@ export async function listFixtures() {
   const res = await fetch(url.toString())
   const data = (await res.json()) as Array<unknown>
 
-  return data
-    .map((item) => normalizeFixture(item))
-    .sort((a, b) => {
-      return a.startsAt.getTime() - b.startsAt.getTime()
-    })
+  return data.map((item) => parseFixture(item))
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -67,7 +63,7 @@ function isObject(input: unknown): input is any {
   return typeof input === 'object' && input !== null
 }
 
-function normalizeArticle(input: unknown): Article {
+function parseArticle(input: unknown): Article {
   if (!isObject(input)) {
     throw new Error('Invalid article')
   }
@@ -99,7 +95,7 @@ function normalizeArticle(input: unknown): Article {
   }
 }
 
-export function normalizeComment(input: unknown): Comment {
+function parseComment(input: unknown): Comment {
   if (!isObject(input)) {
     throw new Error('Invalid comment')
   }
@@ -120,14 +116,14 @@ export function normalizeComment(input: unknown): Comment {
       url: input.Url,
     },
     numberOfLikes: input.NumberOfLikes,
-    replies: input.SubList?.map((i: unknown) => normalizeComment(i)) ?? [],
+    replies: input.SubList?.map((i: unknown) => parseComment(i)) ?? [],
     // "HasPermission": false,
     // "HasLiked": false,
     // "HasReply": false,
   }
 }
 
-export function normalizeFixture(input: unknown): Fixture {
+function parseFixture(input: unknown): Fixture {
   if (!isObject(input)) {
     throw new Error('Invalid fixture')
   }
@@ -148,7 +144,7 @@ export function normalizeFixture(input: unknown): Fixture {
   }
 }
 
-export function normalizeSeason(input: unknown): Season {
+function parseSeason(input: unknown): Season {
   if (!isObject(input)) {
     throw new Error('Invalid fixture')
   }
