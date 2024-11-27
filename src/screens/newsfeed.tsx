@@ -14,11 +14,11 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import SFSymbol from 'sweet-sfsymbols'
-import type { Article } from '~/api'
+import type { Post } from '~/api'
 import { AnimatedHeaderBackground } from '~/components/animated-header-background'
 import { ScrollProvider, useScrollContext } from '~/components/scroll-context'
 import { useTheme } from '~/components/theme-context'
-import { newsArticleQuery, newsfeedQuery } from '~/lib/queries'
+import { postQuery, postsQuery } from '~/lib/queries'
 import { queryClient } from '~/lib/query-client'
 import { RelativeTime } from '~/lib/use-relative-time-formatter'
 
@@ -39,7 +39,7 @@ function List() {
   const { onScroll, offsetY } = useScrollContext()
 
   const { data, isRefetching, refetch, fetchNextPage, isFetchingNextPage } =
-    useSuspenseInfiniteQuery(newsfeedQuery)
+    useSuspenseInfiniteQuery(postsQuery)
 
   const onRefresh = useCallback(async () => {
     await refetch()
@@ -51,9 +51,9 @@ function List() {
     }
   }, [fetchNextPage, isFetchingNextPage])
 
-  const articles = data.pages.flat()
+  const posts = data.pages.flat()
 
-  const ref = useRef<FlatList<Article>>(null)
+  const ref = useRef<FlatList<Post>>(null)
   useScrollToTop(
     useRef({
       scrollToTop: () =>
@@ -66,7 +66,7 @@ function List() {
   return (
     <FlatList
       ref={ref}
-      data={articles}
+      data={posts}
       keyExtractor={(item) => item.id}
       contentInsetAdjustmentBehavior="automatic"
       contentInset={{ bottom: tabBarHeight - insets.bottom }}
@@ -95,7 +95,7 @@ function List() {
 }
 
 interface CardProps {
-  post: Article
+  post: Post
   featured: boolean
 }
 
@@ -103,11 +103,11 @@ function Card({ post, featured }: CardProps) {
   const theme = useTheme()
   const navigation = useNavigation()
 
-  const navigateToArticle = () => {
+  const navigateToPost = () => {
     navigation.navigate('Home', {
       screen: 'Newsfeed',
       params: {
-        screen: 'NewsfeedArticle',
+        screen: 'Post',
         params: {
           id: post.id,
         },
@@ -115,8 +115,8 @@ function Card({ post, featured }: CardProps) {
     })
   }
 
-  const prefetchArticle = () => {
-    void queryClient.prefetchQuery(newsArticleQuery(post.id))
+  const prefetchPost = () => {
+    void queryClient.prefetchQuery(postQuery(post.id))
   }
 
   if (featured) {
@@ -127,8 +127,8 @@ function Card({ post, featured }: CardProps) {
           flexDirection: 'column',
           borderBottomColor: theme.borderBase,
         }}
-        onPress={navigateToArticle}
-        onPressIn={prefetchArticle}
+        onPress={navigateToPost}
+        onPressIn={prefetchPost}
       >
         <Image
           source={post.imageUrl}
@@ -181,8 +181,8 @@ function Card({ post, featured }: CardProps) {
         ...styles.card,
         borderBottomColor: theme.borderBase,
       }}
-      onPress={navigateToArticle}
-      onPressIn={prefetchArticle}
+      onPress={navigateToPost}
+      onPressIn={prefetchPost}
     >
       <View style={{ flex: 1 }}>
         <Text
@@ -206,7 +206,7 @@ function Card({ post, featured }: CardProps) {
 }
 
 interface CardFooterProps {
-  post: Article
+  post: Post
 }
 
 function CardFooter({ post }: CardFooterProps) {

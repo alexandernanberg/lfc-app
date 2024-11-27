@@ -6,11 +6,11 @@ import { registerRootComponent } from 'expo'
 import { useColorScheme } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { ThemeProvider } from '~/components/theme-context'
-import { fixturesQuery, newsfeedQuery } from '~/lib/queries'
+import { fixturesQuery, postsQuery } from '~/lib/queries'
 import { queryClient } from '~/lib/query-client'
 import { getNavigationTheme, Navigation } from './navigation'
 
-void queryClient.prefetchInfiniteQuery(newsfeedQuery)
+void queryClient.prefetchInfiniteQuery(postsQuery)
 void queryClient.prefetchQuery(fixturesQuery)
 
 function App() {

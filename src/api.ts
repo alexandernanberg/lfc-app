@@ -7,23 +7,23 @@ import { config } from '~/config'
 
 const API_URL = config.get('apiUrl')
 
-export async function getArticle(id: string) {
+export async function getPost(id: string) {
   const url = new URL(`${API_URL}/News/GetNewsById`)
   url.searchParams.set('NewsId', id)
   const res = await fetch(url.toString())
   const data = await res.json()
 
-  return parseArticle(data)
+  return parsePost(data)
 }
 
-export async function listArticles(limit = 10, offset = 0) {
+export async function listPosts(limit = 10, offset = 0) {
   // REST API doesn't have limit and offset but only limit/items.
   const url = new URL(`${API_URL}/News/GetNewsList`)
   url.searchParams.set('items', (limit + offset).toString())
   const res = await fetch(url.toString())
   const data = (await res.json()) as Array<unknown>
 
-  return data.slice(offset).map((item) => parseArticle(item))
+  return data.slice(offset).map((item) => parsePost(item))
 }
 
 export async function getComments(id: string) {
@@ -63,9 +63,9 @@ function isObject(input: unknown): input is any {
   return typeof input === 'object' && input !== null
 }
 
-function parseArticle(input: unknown): Article {
+function parsePost(input: unknown): Post {
   if (!isObject(input)) {
-    throw new Error('Invalid article')
+    throw new Error('Invalid post')
   }
 
   return {
@@ -77,9 +77,7 @@ function parseArticle(input: unknown): Article {
     commentsCount: input.NumberOfComments ?? 0,
     slug: input.Url,
     url: `https://lfc.nu${input.Url ?? ''}`,
-    content: (input.ContentText ?? '')
-      .replace(/<hr>[\s\S]*?<figure>[\s\S]*?data-emoji="🚩"[\s\S]*/g, '')
-      .replace(/<p>\*&nbsp;(.|\s)+<\/p>\s<figure.+<\/figure>/g, ''),
+    content: preprocessPostHtml(input.ContentText ?? ''),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     tags:
       input.TagList?.map((tag: any) => ({
@@ -93,6 +91,32 @@ function parseArticle(input: unknown): Article {
       url: input.Admin?.Url,
     },
   }
+}
+
+function preprocessPostHtml(html: string) {
+  // Remove script tags
+  let sanitizedHtml = html.replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, '')
+
+  sanitizedHtml = sanitizedHtml.replace(
+    /<blockquote class="twitter-tweet"[^>]*>[\s\S]*?<\/blockquote>/gi,
+    (match) => {
+      // Extract the tweet ID from the blockquote
+      const tweetIdMatch = match.match(/status\/(\d+)/)
+      if (tweetIdMatch && tweetIdMatch[1]) {
+        const tweetId = tweetIdMatch[1]
+        // Return a custom tag with the tweet ID
+        return `<tweet-embed id="${tweetId}"></tweet-embed>`
+      }
+      return '' // If no tweet ID is found, remove the blockquote
+    },
+  )
+
+  // Remove annying banners
+  sanitizedHtml = sanitizedHtml
+    .replace(/<hr>[\s\S]*?<figure>[\s\S]*?data-emoji="🚩"[\s\S]*/g, '')
+    .replace(/<p>\*&nbsp;(.|\s)+<\/p>\s<figure.+<\/figure>/g, '')
+
+  return sanitizedHtml
 }
 
 function parseComment(input: unknown): Comment {
@@ -167,7 +191,7 @@ interface User {
   url: string
 }
 
-export interface Article {
+export interface Post {
   id: string
   slug: string
   url: string

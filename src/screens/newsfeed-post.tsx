@@ -14,14 +14,14 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
   useWindowDimensions,
+  View,
 } from 'react-native'
 import type {
   CustomTagRendererRecord,
   HTMLElementModelRecord,
 } from 'react-native-render-html'
-import { RenderHTML } from 'react-native-render-html'
+import { defaultHTMLElementModels, RenderHTML } from 'react-native-render-html'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import WebView from 'react-native-webview'
 import SFSymbol from 'sweet-sfsymbols'
@@ -29,14 +29,15 @@ import type { Comment } from '~/api'
 import { AnimatedHeaderBackground } from '~/components/animated-header-background'
 import { ScrollProvider, useScrollContext } from '~/components/scroll-context'
 import { useTheme } from '~/components/theme-context'
-import { newsArticleCommentsQuery, newsArticleQuery } from '~/lib/queries'
+import { TweetEmbed } from '~/components/twitter-embed'
+import { postCommentsQuery, postQuery } from '~/lib/queries'
 import { DistanceTime } from '~/lib/use-relative-time-formatter'
 
 type Props = StaticScreenProps<{
   id: string
 }>
 
-export function NewsfeedArticleScreen({ route }: Props) {
+export function NewsfeedPostScreen({ route }: Props) {
   return (
     <ScrollProvider>
       <AnimatedHeaderBackground />
@@ -47,7 +48,7 @@ export function NewsfeedArticleScreen({ route }: Props) {
   )
 }
 
-export function NewsfeedArticleShareButton({ url }: { url?: string }) {
+export function NewsfeedPostShareButton({ url }: { url?: string }) {
   const theme = useTheme()
 
   return (
@@ -78,19 +79,19 @@ function Content({ id }: { id: string }) {
   const navigation = useNavigation()
 
   // TODO: Use suspense query when it works with placeholder data
-  const { data: article } = useQuery(newsArticleQuery(id))
+  const { data: post } = useQuery(postQuery(id))
 
   useEffect(() => {
     navigation.setOptions({
-      headerRight: () => <NewsfeedArticleShareButton url={article?.url} />,
+      headerRight: () => <NewsfeedPostShareButton url={post?.url} />,
     })
-  }, [article?.url, navigation])
+  }, [post?.url, navigation])
 
-  if (!article) {
+  if (!post) {
     return null
   }
 
-  const content = `<p><strong>${article.excerpt}</strong></p>${article.content}`
+  const content = `<p><strong>${post.excerpt}</strong></p>${post.content}`
 
   return (
     <ScrollView
@@ -111,17 +112,17 @@ function Content({ id }: { id: string }) {
             color: theme.foregroundBase,
           }}
         >
-          {article.title}
+          {post.title}
         </Text>
         <View style={{ marginBottom: 24 }}>
           <Text style={{ color: theme.foregroundBaseFaded }}>
-            {article.publishedAt.toISOString().slice(0, 10)} &middot;{' '}
-            {article.author.name}
+            {post.publishedAt.toISOString().slice(0, 10)} &middot;{' '}
+            {post.author.name}
           </Text>
         </View>
         <View style={{ marginBottom: 8 }}>
           <Image
-            source={article.imageUrl}
+            source={post.imageUrl}
             style={[
               styles.image,
               { backgroundColor: theme.backgroundBaseElevated },
@@ -140,6 +141,7 @@ function Content({ id }: { id: string }) {
             body: { ...tagsStyle.body, color: theme.foregroundBase },
           }}
           enableExperimentalMarginCollapsing
+          enableExperimentalBRCollapsing
           customHTMLElementModels={customHTMLElementModels}
           renderersProps={{
             iframe: {
@@ -156,7 +158,7 @@ function Content({ id }: { id: string }) {
         >
           <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
             <Image
-              source={article.author.avatarUrl}
+              source={post.author.avatarUrl}
               contentFit="cover"
               style={{
                 width: 32,
@@ -166,12 +168,12 @@ function Content({ id }: { id: string }) {
               }}
             />
             <Text style={{ color: theme.foregroundBase }}>
-              {article.author.name}
+              {post.author.name}
             </Text>
           </View>
-          {!!article.tags.length && (
+          {!!post.tags.length && (
             <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-              {article.tags.map((tag) => (
+              {post.tags.map((tag) => (
                 <Text
                   key={tag.id}
                   style={{
@@ -191,7 +193,7 @@ function Content({ id }: { id: string }) {
           )}
         </View>
         <Suspense fallback={<ActivityIndicator />}>
-          <Comments articleId={id} />
+          <Comments postId={id} />
         </Suspense>
       </View>
     </ScrollView>
@@ -200,22 +202,27 @@ function Content({ id }: { id: string }) {
 
 const renderers = {
   iframe: IframeRenderer,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  'tweet-embed': (props: any) => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+    const tweetId = props.tnode.attributes.id as string
+    return <TweetEmbed tweetId={tweetId} />
+  },
 } satisfies CustomTagRendererRecord
 
 const customHTMLElementModels = {
   iframe: iframeModel,
+  'tweet-embed': defaultHTMLElementModels.div,
 } satisfies HTMLElementModelRecord
 
 interface CommentsProps {
-  articleId: string
+  postId: string
 }
 
-function Comments({ articleId }: CommentsProps) {
+function Comments({ postId }: CommentsProps) {
   const theme = useTheme()
 
-  const { data: comments } = useSuspenseQuery(
-    newsArticleCommentsQuery(articleId),
-  )
+  const { data: comments } = useSuspenseQuery(postCommentsQuery(postId))
 
   return (
     <>
@@ -379,9 +386,12 @@ const tagsStyle = {
   },
   ul: {
     paddingHorizontal: 12,
-    margin: 0,
+    marginTop: 17,
   },
-  ol: {},
+  ol: {
+    paddingHorizontal: 12,
+    marginTop: 17,
+  },
   li: {
     marginBottom: 4,
     paddingLeft: 4,

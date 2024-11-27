@@ -16,30 +16,46 @@ import SFSymbol from 'sweet-sfsymbols'
 import { FixturesScreen } from './screens/fixtures'
 import { NewsfeedScreen } from './screens/newsfeed'
 import {
-  NewsfeedArticleScreen,
-  NewsfeedArticleShareButton,
-} from './screens/newsfeed-article'
+  NewsfeedPostScreen,
+  NewsfeedPostShareButton,
+} from './screens/newsfeed-post'
 import { alphaColor, themes } from './theme'
 
 const NewsfeedNavigator = createNativeStackNavigator({
-  initialRouteName: 'NewsfeedList',
+  initialRouteName: 'Feed',
   screenOptions: {
     headerShadowVisible: false,
     headerTransparent: true,
   },
   screens: {
-    NewsfeedList: {
+    Feed: {
       screen: NewsfeedScreen,
       options: {
         title: 'Nyheter',
         headerShown: false,
       },
     },
-    NewsfeedArticle: {
-      screen: NewsfeedArticleScreen,
+    Post: {
+      screen: NewsfeedPostScreen,
       options: {
         title: '',
-        headerRight: () => <NewsfeedArticleShareButton />,
+        headerRight: () => <NewsfeedPostShareButton />,
+      },
+    },
+  },
+})
+
+const FixturesNavigator = createNativeStackNavigator({
+  initialRouteName: 'Feed',
+  screenOptions: {
+    headerShadowVisible: false,
+    headerTransparent: true,
+  },
+  screens: {
+    Feed: {
+      screen: FixturesScreen,
+      options: {
+        headerShown: false,
       },
     },
   },
@@ -56,8 +72,8 @@ const HomeTabs = createBottomTabNavigator({
         bottom: 0,
         backgroundColor: alphaColor(theme.backgroundBase, 0.6),
       },
-      tabBarActiveTintColor: theme.foregroundBase,
-      tabBarInactiveTintColor: theme.foregroundBaseFaded,
+      // tabBarActiveTintColor: theme.foregroundBase,
+      // tabBarInactiveTintColor: theme.foregroundBaseFaded,
       tabBarBackground: () => (
         <BlurView intensity={100} style={StyleSheet.absoluteFill} />
       ),
@@ -85,7 +101,7 @@ const HomeTabs = createBottomTabNavigator({
       },
     },
     Fixtures: {
-      screen: FixturesScreen,
+      screen: FixturesNavigator,
       options: {
         title: 'Matcher',
         tabBarIcon: ({ color, focused, size }) => {
