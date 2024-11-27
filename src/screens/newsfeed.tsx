@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     minWidth: 0,
     gap: 12,
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   image: {
     width: 100,

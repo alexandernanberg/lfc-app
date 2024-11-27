@@ -223,7 +223,7 @@ function Comments({ articleId }: CommentsProps) {
         style={{
           fontWeight: '700',
           paddingVertical: 12,
-          borderBottomWidth: 2,
+          borderBottomWidth: StyleSheet.hairlineWidth,
           borderColor: theme.borderBase,
           color: theme.foregroundBase,
         }}

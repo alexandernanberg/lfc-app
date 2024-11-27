@@ -72,7 +72,7 @@ export const themes: Record<'light' | 'dark', Theme> = {
     foregroundBaseFaded: colors.gray600,
     foregroundAction: colors.red600,
 
-    borderBase: colors.gray100,
+    borderBase: colors.gray200,
   },
   dark: {
     backgroundBase: colors.black,
@@ -82,7 +82,7 @@ export const themes: Record<'light' | 'dark', Theme> = {
     foregroundBaseFaded: colors.gray500,
     foregroundAction: colors.red500,
 
-    borderBase: colors.gray900,
+    borderBase: colors.gray800,
   },
 }
 
