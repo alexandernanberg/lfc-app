@@ -150,6 +150,11 @@ function Content({ id }: { id: string }) {
           renderersProps={{
             iframe: {
               scalesPageToFit: true,
+              webViewProps: {
+                style: {
+                  backgroundColor: 'transparent',
+                },
+              },
             },
           }}
         />
