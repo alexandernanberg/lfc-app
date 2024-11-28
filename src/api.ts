@@ -116,6 +116,12 @@ function preprocessPostHtml(html: string) {
     .replace(/<hr>[\s\S]*?<figure>[\s\S]*?data-emoji="🚩"[\s\S]*/g, '')
     .replace(/<p>\*&nbsp;(.|\s)+<\/p>\s<figure.+<\/figure>/g, '')
 
+  // Ensure all iframes has a valid protocol
+  sanitizedHtml = sanitizedHtml.replace(
+    /(?<=\bsrc="?)\/\/(?<=[^"]+?)/gi,
+    'https://',
+  )
+
   return sanitizedHtml
 }
 
