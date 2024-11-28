@@ -7,6 +7,7 @@ const postsQuery = infiniteQueryOptions({
   queryFn: ({ pageParam }) => listPosts(10, (pageParam - 1) * 10),
   initialPageParam: 1,
   getNextPageParam: (firstPage, allPages, lastPageParam) => lastPageParam + 1,
+  staleTime: 5 * 60 * 1000,
 })
 
 function postQuery(id: string) {
@@ -19,6 +20,7 @@ function postQuery(id: string) {
         ?.pages.flat()
         .find((i) => i.id === id)
     },
+    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -33,6 +35,8 @@ function postCommentsQuery(id: string) {
 const fixturesQuery = queryOptions({
   queryKey: ['fixtures'],
   queryFn: () => listFixtures(),
+  // TODO: only stale when day has changed?
+  staleTime: 5 * 60 * 1000,
 })
 
 export { fixturesQuery, postCommentsQuery, postQuery, postsQuery }
