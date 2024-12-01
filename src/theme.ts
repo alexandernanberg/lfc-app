@@ -1,3 +1,5 @@
+import type { TextStyle } from 'react-native'
+
 export const colors = {
   black: '#000000',
   white: '#ffffff',
@@ -57,10 +59,11 @@ export interface Theme {
   backgroundBaseElevated: string
 
   foregroundBase: string
-  foregroundBaseFaded: string
+  foregroundBaseMuted: string
   foregroundAction: string
 
   borderBase: string
+  borderBaseMuted: string
 }
 
 export const themes: Record<'light' | 'dark', Theme> = {
@@ -69,22 +72,75 @@ export const themes: Record<'light' | 'dark', Theme> = {
     backgroundBaseElevated: colors.gray100,
 
     foregroundBase: colors.gray950,
-    foregroundBaseFaded: colors.gray600,
+    foregroundBaseMuted: colors.gray600,
     foregroundAction: colors.red600,
 
-    borderBase: colors.gray200,
+    borderBase: colors.gray400,
+    borderBaseMuted: colors.gray200,
   },
   dark: {
     backgroundBase: colors.black,
     backgroundBaseElevated: colors.gray900,
 
     foregroundBase: colors.gray200,
-    foregroundBaseFaded: colors.gray500,
+    foregroundBaseMuted: colors.gray500,
     foregroundAction: colors.red500,
 
     borderBase: colors.gray800,
+    borderBaseMuted: colors.gray800,
   },
 }
+
+export const textStyles = {
+  displayLarge: {
+    fontSize: 34,
+    lineHeight: 41,
+    fontWeight: 700,
+  },
+
+  headingLarge: {
+    fontSize: 28,
+    lineHeight: 34,
+    fontWeight: 700,
+  },
+  headingMedium: {
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: 700,
+  },
+  headingSmall: {
+    fontSize: 20,
+    lineHeight: 25,
+    fontWeight: 700,
+  },
+  headingXSmall: {
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: 600,
+  },
+
+  bodyMedium: {
+    fontSize: 17,
+    lineHeight: 25,
+  },
+  bodySmall: {
+    fontSize: 15,
+    lineHeight: 20,
+  },
+
+  captionLarge: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  captionMedium: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  captionSmall: {
+    fontSize: 11,
+    lineHeight: 13,
+  },
+} as const satisfies Record<string, TextStyle>
 
 function numberToHex(value: number): string {
   if (value < 0 || value > 1) {

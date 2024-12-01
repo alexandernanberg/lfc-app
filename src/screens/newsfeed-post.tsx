@@ -12,7 +12,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TouchableOpacity,
   useWindowDimensions,
   View,
@@ -20,6 +19,7 @@ import {
 import type {
   CustomTagRendererRecord,
   HTMLElementModelRecord,
+  TRenderEngineConfig,
 } from 'react-native-render-html'
 import { defaultHTMLElementModels, RenderHTML } from 'react-native-render-html'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -28,10 +28,12 @@ import SFSymbol from 'sweet-sfsymbols'
 import type { Comment } from '~/api'
 import { AnimatedHeaderBackground } from '~/components/animated-header-background'
 import { ScrollProvider, useScrollContext } from '~/components/scroll-context'
+import { Text } from '~/components/text'
 import { useTheme } from '~/components/theme-context'
 import { TweetEmbed } from '~/components/twitter-embed'
 import { postCommentsQuery, postQuery } from '~/lib/queries'
 import { DistanceTime } from '~/lib/use-relative-time-formatter'
+import { textStyles } from '~/theme'
 
 type Props = StaticScreenProps<{
   id: string
@@ -103,19 +105,16 @@ function Content({ id }: { id: string }) {
     >
       <View style={{ padding: 17 }}>
         <Text
+          variant="headingLarge"
           style={{
-            fontSize: 28,
-            lineHeight: 34,
-            fontWeight: '700',
             flexShrink: 1,
             marginBottom: 8,
-            color: theme.foregroundBase,
           }}
         >
           {post.title}
         </Text>
         <View style={{ marginBottom: 24 }}>
-          <Text style={{ color: theme.foregroundBaseFaded }}>
+          <Text color="baseMuted" variant="captionLarge">
             {post.publishedAt.toISOString().slice(0, 10)} &middot;{' '}
             {post.author.name}
           </Text>
@@ -138,10 +137,19 @@ function Content({ id }: { id: string }) {
           contentWidth={width - 17 * 2}
           tagsStyles={{
             ...tagsStyle,
-            body: { ...tagsStyle.body, color: theme.foregroundBase },
+            body: {
+              ...tagsStyle.body,
+              color: theme.foregroundBase,
+            },
             a: {
               color: theme.foregroundAction,
               textDecorationColor: theme.foregroundAction,
+            },
+            hr: {
+              backgroundColor: theme.borderBase,
+              height: StyleSheet.hairlineWidth,
+              marginTop: 32,
+              marginBottom: 32,
             },
           }}
           enableExperimentalMarginCollapsing
@@ -176,23 +184,20 @@ function Content({ id }: { id: string }) {
                 overflow: 'hidden',
               }}
             />
-            <Text style={{ color: theme.foregroundBase }}>
-              {post.author.name}
-            </Text>
+            <Text variant="bodySmall">{post.author.name}</Text>
           </View>
           {!!post.tags.length && (
             <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
               {post.tags.map((tag) => (
                 <Text
                   key={tag.id}
+                  variant="captionMedium"
                   style={{
                     paddingVertical: 6,
                     padding: 8,
                     paddingHorizontal: 12,
                     backgroundColor: theme.backgroundBaseElevated,
                     borderRadius: 12,
-                    fontSize: 12,
-                    color: theme.foregroundBase,
                   }}
                 >
                   {tag.value}
@@ -230,18 +235,16 @@ interface CommentsProps {
 
 function Comments({ postId }: CommentsProps) {
   const theme = useTheme()
-
   const { data: comments } = useSuspenseQuery(postCommentsQuery(postId))
 
   return (
     <>
       <Text
+        variant="headingXSmall"
         style={{
-          fontWeight: '700',
           paddingVertical: 12,
           borderBottomWidth: StyleSheet.hairlineWidth,
           borderColor: theme.borderBase,
-          color: theme.foregroundBase,
         }}
       >
         {comments.length} {comments.length === 1 ? 'kommentar' : 'kommentarer'}
@@ -292,16 +295,10 @@ function Comment({ comment, children }: CommentProps) {
 
         <View style={{ gap: 6, flex: 1 }}>
           <View style={{ flexDirection: 'row' }}>
-            <Text
-              style={{
-                fontWeight: '500',
-                fontSize: 13,
-                color: theme.foregroundBase,
-              }}
-            >
+            <Text variant="captionLarge" style={{ fontWeight: 500 }}>
               {comment.author.name}
             </Text>
-            <Text style={{ color: theme.foregroundBaseFaded, fontSize: 13 }}>
+            <Text variant="captionLarge" color="baseMuted">
               {' '}
               &middot; <DistanceTime date={comment.createdAt} />
             </Text>
@@ -317,11 +314,9 @@ function Comment({ comment, children }: CommentProps) {
             }}
           >
             <Text
+              variant="bodySmall"
               style={{
-                fontSize: 15,
-                lineHeight: 20,
                 flex: 1,
-                color: theme.foregroundBase,
               }}
             >
               {comment.comment}
@@ -341,14 +336,14 @@ function Comment({ comment, children }: CommentProps) {
                 name="bubble.right"
                 weight="regular"
                 scale="small"
-                colors={[theme.foregroundBaseFaded]}
+                colors={[theme.foregroundBaseMuted]}
                 size={13}
               />
               <Text
+                variant="captionLarge"
+                color="baseMuted"
                 style={{
-                  fontSize: 13,
-                  fontWeight: '500',
-                  color: theme.foregroundBaseFaded,
+                  fontWeight: 500,
                 }}
               >
                 Svara
@@ -361,18 +356,18 @@ function Comment({ comment, children }: CommentProps) {
                 name="hand.thumbsup"
                 weight="regular"
                 scale="small"
-                colors={[theme.foregroundBaseFaded]}
+                colors={[theme.foregroundBaseMuted]}
                 size={13}
               />
               <Text
+                variant="captionLarge"
+                color="baseMuted"
                 style={{
-                  fontSize: 13,
-                  fontWeight: '500',
-                  color: theme.foregroundBaseFaded,
+                  fontWeight: 500,
                 }}
               >
                 Gilla{' '}
-                <Text style={{ fontWeight: '400' }}>
+                <Text style={{ fontWeight: 400, color: undefined }}>
                   ({comment.numberOfLikes})
                 </Text>
               </Text>
@@ -387,11 +382,17 @@ function Comment({ comment, children }: CommentProps) {
 
 const tagsStyle = {
   body: {
-    fontSize: 17,
-    lineHeight: 25,
+    ...textStyles.bodyMedium,
   },
   h2: {
+    ...textStyles.headingSmall,
     marginTop: 27,
+  },
+  strong: {
+    fontWeight: 600,
+  },
+  b: {
+    fontWeight: 600,
   },
   ul: {
     paddingHorizontal: 12,
@@ -409,11 +410,12 @@ const tagsStyle = {
     flex: 1,
     minWidth: 0,
     margin: 0,
-    marginTop: 17,
+    marginBottom: 24,
+    marginTop: 24,
     borderRadius: 12,
     overflow: 'hidden',
   },
-} as const
+} satisfies TRenderEngineConfig['tagsStyles']
 
 const styles = StyleSheet.create({
   image: {

@@ -1,18 +1,20 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
-import { useScrollToTop } from '@react-navigation/native'
+import { useNavigation, useScrollToTop } from '@react-navigation/native'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { formatRelative } from 'date-fns'
 import type { Locale } from 'date-fns/locale'
 import { sv } from 'date-fns/locale'
 import { Image } from 'expo-image'
 import { Suspense, useMemo, useRef, useState } from 'react'
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native'
+import { FlatList, Pressable, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import type { Fixture } from '~/api'
+import type { FixtureSlim } from '~/api'
 import { AnimatedHeaderBackground } from '~/components/animated-header-background'
 import { ScrollProvider, useScrollContext } from '~/components/scroll-context'
+import { Text } from '~/components/text'
 import { useTheme } from '~/components/theme-context'
-import { fixturesQuery } from '~/lib/queries'
+import { fixtureQuery, fixturesQuery } from '~/lib/queries'
+import { queryClient } from '~/lib/query-client'
 import { useInterval } from '~/lib/use-interval'
 import { capitalizeFirstLetter } from '~/utils'
 
@@ -37,7 +39,7 @@ function List() {
   const lastFixture = useMemo(() => findLastFixture(data), [data])
   const lastFixtureIndex = lastFixture ? data.indexOf(lastFixture) : 0
 
-  const ref = useRef<FlatList<Fixture>>(null)
+  const ref = useRef<FlatList<FixtureSlim>>(null)
   useScrollToTop(
     useRef({
       scrollToTop: () =>
@@ -78,17 +80,38 @@ const lfcLogoUrl =
   'https://res.cloudinary.com/supportersplace/image/upload/w_60,fl_lossy,f_auto,fl_progressive/files_lfc_nu/opponent/lfc-crest.png'
 
 interface CardProps {
-  fixture: Fixture
+  fixture: FixtureSlim
 }
 
 function Card({ fixture }: CardProps) {
   const theme = useTheme()
+  const navigation = useNavigation()
+
+  const navigateToGame = () => {
+    navigation.navigate('Home', {
+      screen: 'Fixtures',
+      params: {
+        screen: 'Game',
+        params: {
+          id: fixture.id,
+        },
+      },
+    })
+  }
+
+  const prefetchGame = () => {
+    void queryClient.prefetchQuery(fixtureQuery(fixture.id))
+  }
 
   const [homeGoals, awayGoals] =
     fixture.result?.split('-').map((i) => parseInt(i)) ?? []
 
   return (
-    <Pressable style={{ ...styles.card, borderBottomColor: theme.borderBase }}>
+    <Pressable
+      style={{ ...styles.card, borderBottomColor: theme.borderBase }}
+      onPress={navigateToGame}
+      onPressIn={prefetchGame}
+    >
       <View style={{ flex: 1 }}>
         <View
           style={{
@@ -98,10 +121,10 @@ function Card({ fixture }: CardProps) {
             marginBottom: 8,
           }}
         >
-          <Text style={{ color: theme.foregroundBaseFaded, fontSize: 13 }}>
+          <Text variant="captionLarge" color="baseMuted">
             <RelativeTime date={fixture.startsAt} />
           </Text>
-          <Text style={{ color: theme.foregroundBaseFaded, fontSize: 13 }}>
+          <Text variant="captionLarge" color="baseMuted">
             {fixture.type} {fixture.playOffType && `(${fixture.playOffType})`}
           </Text>
         </View>
@@ -114,10 +137,11 @@ function Card({ fixture }: CardProps) {
           }}
         >
           <Text
+            variant="bodySmall"
             style={{
               fontVariant: ['tabular-nums'],
-              color: theme.foregroundBase,
             }}
+            color="baseMuted"
             numberOfLines={1}
           >
             {!fixture.result ? fixture.startsAtTime : 'FT'}
@@ -154,7 +178,6 @@ interface TeamRowProps {
 }
 
 function TeamRow({ name, logoUrl, goals, winner }: TeamRowProps) {
-  const theme = useTheme()
   return (
     <View
       style={{
@@ -166,12 +189,11 @@ function TeamRow({ name, logoUrl, goals, winner }: TeamRowProps) {
     >
       {goals != null && (
         <Text
+          variant="bodySmall"
           style={[
             {
-              color: theme.foregroundBase,
-              fontSize: 15,
               width: 14,
-              fontWeight: winner ? '600' : '400',
+              fontWeight: winner ? 600 : 400,
               textAlign: 'center',
               fontVariant: ['tabular-nums'],
             },
@@ -184,13 +206,8 @@ function TeamRow({ name, logoUrl, goals, winner }: TeamRowProps) {
         <Image source={logoUrl} style={styles.image} contentFit="contain" />
       </View>
       <Text
-        style={[
-          {
-            color: theme.foregroundBase,
-            fontSize: 15,
-            fontWeight: winner ? '600' : '400',
-          },
-        ]}
+        variant="bodySmall"
+        style={[{ fontWeight: winner ? 600 : 400 }]}
         numberOfLines={1}
       >
         {name}
@@ -199,7 +216,7 @@ function TeamRow({ name, logoUrl, goals, winner }: TeamRowProps) {
   )
 }
 
-function findLastFixture(data: Fixture[]): Fixture | null {
+function findLastFixture(data: FixtureSlim[]): FixtureSlim | null {
   const today = new Date()
   today.setHours(0, 0, 0, 0) // Clear time to only compare dates
 

@@ -9,7 +9,6 @@ import {
   Pressable,
   RefreshControl,
   StyleSheet,
-  Text,
   View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -17,6 +16,7 @@ import SFSymbol from 'sweet-sfsymbols'
 import type { Post } from '~/api'
 import { AnimatedHeaderBackground } from '~/components/animated-header-background'
 import { ScrollProvider, useScrollContext } from '~/components/scroll-context'
+import { Text } from '~/components/text'
 import { useTheme } from '~/components/theme-context'
 import { postQuery, postsQuery } from '~/lib/queries'
 import { queryClient } from '~/lib/query-client'
@@ -140,15 +140,11 @@ function Card({ post, featured }: CardProps) {
         />
         <View>
           <Text
+            variant="headingSmall"
             style={[
-              styles.title,
               {
-                fontSize: 21,
-                lineHeight: 27,
                 marginTop: 4,
                 marginBottom: 4,
-                fontWeight: '700',
-                color: theme.foregroundBase,
               },
             ]}
             numberOfLines={2}
@@ -156,14 +152,8 @@ function Card({ post, featured }: CardProps) {
             {post.title}
           </Text>
           <Text
-            style={[
-              {
-                fontSize: 15,
-                lineHeight: 20,
-                marginBottom: 12,
-                color: theme.foregroundBase,
-              },
-            ]}
+            variant="bodySmall"
+            style={[{ marginBottom: 12 }]}
             numberOfLines={2}
           >
             {post.excerpt}
@@ -186,7 +176,8 @@ function Card({ post, featured }: CardProps) {
     >
       <View style={{ flex: 1 }}>
         <Text
-          style={[styles.title, { color: theme.foregroundBase }]}
+          variant="headingXSmall"
+          style={[{ marginBottom: 12 }]}
           numberOfLines={2}
         >
           {post.title}
@@ -219,12 +210,7 @@ function CardFooter({ post }: CardFooterProps) {
         marginTop: 'auto',
       }}
     >
-      <Text
-        style={{
-          fontSize: 13,
-          color: theme.foregroundBaseFaded,
-        }}
-      >
+      <Text color="baseMuted" variant="captionLarge">
         <RelativeTime date={new Date(post.publishedAt)} />
       </Text>
       <View
@@ -235,20 +221,14 @@ function CardFooter({ post }: CardFooterProps) {
           alignItems: 'center',
         }}
       >
-        <Text
-          style={{
-            fontSize: 13,
-            lineHeight: 13,
-            color: theme.foregroundBaseFaded,
-          }}
-        >
+        <Text variant="captionLarge" color="baseMuted">
           {post.commentsCount}
         </Text>
         <SFSymbol
           name="bubble.left.and.bubble.right"
           weight="regular"
           scale="small"
-          colors={[theme.foregroundBaseFaded]}
+          colors={[theme.foregroundBaseMuted]}
           size={15}
         />
       </View>
@@ -270,13 +250,5 @@ const styles = StyleSheet.create({
     aspectRatio: '4/3',
     borderRadius: 12,
     overflow: 'hidden',
-  },
-  title: {
-    fontSize: 17,
-    fontWeight: '600',
-    lineHeight: 22,
-    minWidth: 0,
-    flexShrink: 1,
-    marginBottom: 12,
   },
 })
