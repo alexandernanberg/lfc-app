@@ -16,6 +16,7 @@ import SFSymbol from 'sweet-sfsymbols'
 import type { Post } from '~/api'
 import { AnimatedHeaderBackground } from '~/components/animated-header-background'
 import { ScrollProvider, useScrollContext } from '~/components/scroll-context'
+import { Separator } from '~/components/separator'
 import { Text } from '~/components/text'
 import { useTheme } from '~/components/theme-context'
 import { postQuery, postsQuery } from '~/lib/queries'
@@ -81,6 +82,7 @@ function List() {
       renderItem={({ item, index }) => (
         <Card post={item} featured={index === 0} />
       )}
+      ItemSeparatorComponent={Separator}
       ListFooterComponent={
         isFetchingNextPage ? (
           <ActivityIndicator style={{ marginTop: 32, marginBottom: 32 }} />
@@ -122,11 +124,7 @@ function Card({ post, featured }: CardProps) {
   if (featured) {
     return (
       <Pressable
-        style={{
-          ...styles.card,
-          flexDirection: 'column',
-          borderBottomColor: theme.borderBase,
-        }}
+        style={[styles.card, { flexDirection: 'column' }]}
         onPress={navigateToPost}
         onPressIn={prefetchPost}
       >
@@ -141,12 +139,7 @@ function Card({ post, featured }: CardProps) {
         <View>
           <Text
             variant="headingSmall"
-            style={[
-              {
-                marginTop: 4,
-                marginBottom: 4,
-              },
-            ]}
+            style={[{ marginTop: 4, marginBottom: 4 }]}
             numberOfLines={2}
           >
             {post.title}
@@ -167,10 +160,7 @@ function Card({ post, featured }: CardProps) {
 
   return (
     <Pressable
-      style={{
-        ...styles.card,
-        borderBottomColor: theme.borderBase,
-      }}
+      style={[styles.card]}
       onPress={navigateToPost}
       onPressIn={prefetchPost}
     >
@@ -243,7 +233,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     minWidth: 0,
     gap: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   image: {
     width: 100,

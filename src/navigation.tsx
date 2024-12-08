@@ -10,10 +10,10 @@ import {
 } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { BlurView } from 'expo-blur'
-import type { ColorSchemeName } from 'react-native'
-import { StyleSheet } from 'react-native'
+import { StyleSheet, type ColorSchemeName } from 'react-native'
 import SFSymbol from 'sweet-sfsymbols'
 import { FixturesScreen } from './screens/fixtures'
+import { FixturesGameScreen } from './screens/fixtures-game'
 import { NewsfeedScreen } from './screens/newsfeed'
 import {
   NewsfeedPostScreen,
@@ -55,7 +55,14 @@ const FixturesNavigator = createNativeStackNavigator({
     Feed: {
       screen: FixturesScreen,
       options: {
+        title: 'Matcher',
         headerShown: false,
+      },
+    },
+    Game: {
+      screen: FixturesGameScreen,
+      options: {
+        title: '',
       },
     },
   },
@@ -72,8 +79,6 @@ const HomeTabs = createBottomTabNavigator({
         bottom: 0,
         backgroundColor: alphaColor(theme.backgroundBase, 0.6),
       },
-      // tabBarActiveTintColor: theme.foregroundBase,
-      // tabBarInactiveTintColor: theme.foregroundBaseFaded,
       tabBarBackground: () => (
         <BlurView intensity={100} style={StyleSheet.absoluteFill} />
       ),

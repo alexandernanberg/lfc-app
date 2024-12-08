@@ -11,9 +11,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { FixtureSlim } from '~/api'
 import { AnimatedHeaderBackground } from '~/components/animated-header-background'
 import { ScrollProvider, useScrollContext } from '~/components/scroll-context'
+import { Separator } from '~/components/separator'
 import { Text } from '~/components/text'
-import { useTheme } from '~/components/theme-context'
-import { fixtureQuery, fixturesQuery } from '~/lib/queries'
+import {
+  fixtureEventsQuery,
+  fixtureQuery,
+  fixturesQuery,
+  fixtureStatsQuery,
+} from '~/lib/queries'
 import { queryClient } from '~/lib/query-client'
 import { useInterval } from '~/lib/use-interval'
 import { capitalizeFirstLetter } from '~/utils'
@@ -68,6 +73,7 @@ function List() {
         length: ROW_HEIGHT,
         offset: ROW_HEIGHT * index,
       })}
+      ItemSeparatorComponent={Separator}
       initialNumToRender={lastFixtureIndex + 10}
       initialScrollIndex={lastFixtureIndex}
       onScroll={onScroll}
@@ -84,7 +90,6 @@ interface CardProps {
 }
 
 function Card({ fixture }: CardProps) {
-  const theme = useTheme()
   const navigation = useNavigation()
 
   const navigateToGame = () => {
@@ -101,6 +106,8 @@ function Card({ fixture }: CardProps) {
 
   const prefetchGame = () => {
     void queryClient.prefetchQuery(fixtureQuery(fixture.id))
+    void queryClient.prefetchQuery(fixtureEventsQuery(fixture.id))
+    void queryClient.prefetchQuery(fixtureStatsQuery(fixture.id))
   }
 
   const [homeGoals, awayGoals] =
@@ -108,7 +115,7 @@ function Card({ fixture }: CardProps) {
 
   return (
     <Pressable
-      style={{ ...styles.card, borderBottomColor: theme.borderBase }}
+      style={styles.card}
       onPress={navigateToGame}
       onPressIn={prefetchGame}
     >
@@ -153,7 +160,7 @@ function Card({ fixture }: CardProps) {
                 !fixture.isAwayGame ? lfcLogoUrl : fixture.opponentLogoUrl
               }
               goals={homeGoals}
-              winner={homeGoals > awayGoals}
+              winner={(homeGoals ?? 0) > (awayGoals ?? 0)}
             />
             <TeamRow
               name={fixture.isAwayGame ? 'Liverpool' : fixture.oppoonent}
@@ -161,7 +168,7 @@ function Card({ fixture }: CardProps) {
                 fixture.isAwayGame ? lfcLogoUrl : fixture.opponentLogoUrl
               }
               goals={awayGoals}
-              winner={awayGoals > homeGoals}
+              winner={(awayGoals ?? 0) > (homeGoals ?? 0)}
             />
           </View>
         </View>
@@ -173,7 +180,7 @@ function Card({ fixture }: CardProps) {
 interface TeamRowProps {
   name: string
   logoUrl: string
-  goals: number | null
+  goals: number | null | undefined
   winner: boolean
 }
 
@@ -218,26 +225,24 @@ function TeamRow({ name, logoUrl, goals, winner }: TeamRowProps) {
 
 function findLastFixture(data: FixtureSlim[]): FixtureSlim | null {
   const today = new Date()
-  today.setHours(0, 0, 0, 0) // Clear time to only compare dates
+  today.setHours(0, 0, 0, 0)
 
   let start = 0
   let end = data.length - 1
 
-  // Early return if there's no past fixture
-  if (data.length === 0 || data[0].startsAt >= today) return null
+  if (data.length === 0 || data[0]!.startsAt >= today) return null
 
   while (start < end) {
     const mid = Math.ceil((start + end) / 2)
 
-    if (data[mid].startsAt < today) {
-      start = mid // Continue searching to the right for the last match
+    if (data[mid]!.startsAt < today) {
+      start = mid
     } else {
       end = mid - 1
     }
   }
 
-  // `start` now points to the last fixture before today
-  return data[start].startsAt < today ? data[start] : null
+  return data[start]!.startsAt < today ? data[start]! : null
 }
 
 const formatRelativeLocale = {
@@ -285,7 +290,6 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     gap: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
     height: ROW_HEIGHT,
   },
   image: {

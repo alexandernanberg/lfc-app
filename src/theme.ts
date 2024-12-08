@@ -75,7 +75,7 @@ export const themes: Record<'light' | 'dark', Theme> = {
     foregroundBaseMuted: colors.gray600,
     foregroundAction: colors.red600,
 
-    borderBase: colors.gray400,
+    borderBase: colors.gray300,
     borderBaseMuted: colors.gray200,
   },
   dark: {

@@ -3,6 +3,8 @@
   "compilerOptions": {
     "strict": true,
     "baseUrl": ".",
+    "noUncheckedIndexedAccess": true,
+    "verbatimModuleSyntax": true,
     "paths": {
       "~/*": ["./src/*"]
     }

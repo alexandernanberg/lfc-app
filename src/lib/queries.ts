@@ -1,5 +1,13 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query'
-import { getComments, getPost, listFixtures, listPosts } from '~/api'
+import {
+  getComments,
+  getFixture,
+  getFixtureEvents,
+  getFixtureStats,
+  getPost,
+  listFixtures,
+  listPosts,
+} from '~/api'
 import { queryClient } from './query-client'
 
 const postsQuery = infiniteQueryOptions({
@@ -39,4 +47,36 @@ const fixturesQuery = queryOptions({
   staleTime: 5 * 60 * 1000,
 })
 
-export { fixturesQuery, postCommentsQuery, postQuery, postsQuery }
+const fixtureQuery = (id: string) => {
+  return queryOptions({
+    queryKey: ['fixture', id],
+    queryFn: () => getFixture(id),
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+const fixtureStatsQuery = (id: string) => {
+  return queryOptions({
+    queryKey: ['fixture', 'stats', id],
+    queryFn: () => getFixtureStats(id),
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+const fixtureEventsQuery = (id: string) => {
+  return queryOptions({
+    queryKey: ['fixture', 'events', id],
+    queryFn: () => getFixtureEvents(id),
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+export {
+  fixtureEventsQuery,
+  fixtureQuery,
+  fixturesQuery,
+  fixtureStatsQuery,
+  postCommentsQuery,
+  postQuery,
+  postsQuery,
+}
