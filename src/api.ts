@@ -126,24 +126,33 @@ function preprocessPostHtml(html: string) {
   // Remove script tags
   let sanitizedHtml = html.replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, '')
 
-  sanitizedHtml = sanitizedHtml.replace(
-    /<blockquote class="twitter-tweet"[^>]*>[\s\S]*?<\/blockquote>/gi,
-    (match) => {
-      // Extract the tweet ID from the blockquote
-      const tweetIdMatch = match.match(/status\/(\d+)/)
-      if (tweetIdMatch && tweetIdMatch[1]) {
-        const tweetId = tweetIdMatch[1]
-        // Return a custom tag with the tweet ID
+  // Twitter embeds
+  sanitizedHtml = sanitizedHtml
+    .replace(
+      /<blockquote class="twitter-tweet"[^>]*>[\s\S]*?<\/blockquote>/gi,
+      (match) => {
+        // Extract the tweet ID from the blockquote
+        const tweetIdMatch = match.match(/status\/(\d+)/)
+        if (tweetIdMatch && tweetIdMatch[1]) {
+          const tweetId = tweetIdMatch[1]
+          // Return a custom tag with the tweet ID
+          return `<tweet-embed id="${tweetId}"></tweet-embed>`
+        }
+        return '' // If no tweet ID is found, remove the blockquote
+      },
+    )
+    .replace(
+      /<iframe[^>]*src="[^"]*?\/Tweet\.html[^"]*?id=(\d+)[^>]*><\/iframe>/gi,
+      (match, tweetId) => {
         return `<tweet-embed id="${tweetId}"></tweet-embed>`
-      }
-      return '' // If no tweet ID is found, remove the blockquote
-    },
-  )
+      },
+    )
 
+  // Instagram embeds
   sanitizedHtml = sanitizedHtml.replace(
-    /<iframe[^>]*src="[^"]*?\/Tweet\.html[^"]*?id=(\d+)[^>]*><\/iframe>/gi,
-    (match, tweetId) => {
-      return `<tweet-embed id="${tweetId}"></tweet-embed>`
+    /<figure>[\s\S]*?<blockquote class="instagram-media"[^>]*data-instgrm-permalink="[^"]*\/p\/([^/?]+)[^"]*"[^>]*>[\s\S]*?<\/blockquote>[\s\S]*?<\/figure>/gi,
+    (match, postId) => {
+      return `<instagram-embed id="${postId}"></instagram-embed>`
     },
   )
 

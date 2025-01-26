@@ -27,6 +27,7 @@ import WebView from 'react-native-webview'
 import SFSymbol from 'sweet-sfsymbols'
 import type { Comment } from '~/api'
 import { AnimatedHeaderBackground } from '~/components/animated-header-background'
+import { InstagramEmbed } from '~/components/instagram-embed'
 import { ScrollProvider, useScrollContext } from '~/components/scroll-context'
 import { Text } from '~/components/text'
 import { useTheme } from '~/components/theme-context'
@@ -222,11 +223,18 @@ const renderers = {
     const tweetId = props.tnode.attributes.id as string
     return <TweetEmbed tweetId={tweetId} />
   },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  'instagram-embed': (props: any) => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+    const postId = props.tnode.attributes.id as string
+    return <InstagramEmbed postId={postId} />
+  },
 } satisfies CustomTagRendererRecord
 
 const customHTMLElementModels = {
   iframe: iframeModel,
   'tweet-embed': defaultHTMLElementModels.div,
+  'instagram-embed': defaultHTMLElementModels.div,
 } satisfies HTMLElementModelRecord
 
 interface CommentsProps {

@@ -41,7 +41,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     reactCompiler: true,
   },
   newArchEnabled: true,
-  plugins: [],
+  plugins: ['expo-build-properties'],
   extra: {
     eas: {
       projectId: '6184674a-4321-4159-9079-2e70ef8440f1',
