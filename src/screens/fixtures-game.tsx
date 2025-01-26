@@ -155,7 +155,10 @@ function FixtureResultTeam({ logoUrl, name }: FixtureResultTeamProps) {
         style={{ width: 44, height: 44 }}
         contentFit="contain"
       />
-      <Text variant="captionLarge" style={{ fontWeight: 600 }}>
+      <Text
+        variant="captionLarge"
+        style={{ fontWeight: 600, textAlign: 'center' }}
+      >
         {name}
       </Text>
     </View>
