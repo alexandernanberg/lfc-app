@@ -396,6 +396,10 @@ const tagsStyle = {
     ...textStyles.headingSmall,
     marginTop: 27,
   },
+  p: {
+    ...textStyles.bodyMedium,
+    marginTop: 17,
+  },
   strong: {
     fontWeight: 600,
   },

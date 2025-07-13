@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react'
-import { forwardRef, useEffect, useState } from 'react'
+import type { ReactNode, Ref } from 'react'
+import { useEffect, useState } from 'react'
 import { Pressable, StyleSheet, useColorScheme, View } from 'react-native'
 import Animated, {
   useAnimatedStyle,
@@ -94,16 +94,14 @@ interface SegmentProps {
   active?: boolean
   disabled?: boolean
   onPress: () => void
+  ref?: Ref<View>
 }
 
-const Segment = forwardRef<View, SegmentProps>(function Segment(
-  { children, active, disabled, ...props },
-  forwardedRef,
-) {
+function Segment({ children, active, disabled, ref, ...props }: SegmentProps) {
   const theme = useTheme()
 
   return (
-    <Pressable ref={forwardedRef} style={[styles.segment]} {...props}>
+    <Pressable ref={ref} style={[styles.segment]} {...props}>
       <Animated.Text
         style={[
           styles.segmentText,
@@ -119,7 +117,7 @@ const Segment = forwardRef<View, SegmentProps>(function Segment(
       </Animated.Text>
     </Pressable>
   )
-})
+}
 
 const styles = StyleSheet.create({
   root: {

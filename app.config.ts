@@ -40,7 +40,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   experiments: {
     reactCompiler: true,
   },
-  newArchEnabled: true,
   plugins: ['expo-build-properties'],
   extra: {
     eas: {

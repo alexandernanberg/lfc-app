@@ -22,15 +22,15 @@ export function ScrollProvider({ children }: ScrollProviderProps) {
   const insets = useSafeAreaInsets()
   const headerHeight = useHeaderHeight()
 
-  const offsetY = -(headerHeight || insets.top)
-  const scrollY = useSharedValue(offsetY)
+  const offsetY = Math.floor(-(headerHeight || insets.top))
+  const scrollY = useSharedValue(0)
 
   const context = useMemo<ScrollContext>(
     () => ({
       scrollY,
       offsetY,
       onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-        scrollY.value = event.nativeEvent.contentOffset.y
+        scrollY.value = Math.floor(event.nativeEvent.contentOffset.y - offsetY)
       },
     }),
     [scrollY, offsetY],

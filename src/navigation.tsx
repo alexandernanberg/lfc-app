@@ -69,18 +69,15 @@ const FixturesNavigator = createNativeStackNavigator({
 })
 
 const HomeTabs = createBottomTabNavigator({
-  screenOptions: ({ theme: { dark } }) => {
-    const theme = themes[dark ? 'dark' : 'light']
-
+  screenOptions: () => {
     return {
       headerShown: false,
       tabBarStyle: {
         position: 'absolute',
         bottom: 0,
-        backgroundColor: alphaColor(theme.backgroundBase, 0.6),
       },
       tabBarBackground: () => (
-        <BlurView intensity={100} style={StyleSheet.absoluteFill} />
+        <BlurView intensity={100} style={[StyleSheet.absoluteFill]} />
       ),
     }
   },
