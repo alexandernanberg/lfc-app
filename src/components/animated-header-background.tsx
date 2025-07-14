@@ -39,7 +39,11 @@ function AnimatedHeaderBackground({
       ]}
       {...props}
     >
-      <BlurView intensity={100} style={[StyleSheet.absoluteFill]} />
+      <BlurView
+        intensity={100}
+        style={[StyleSheet.absoluteFill]}
+        tint="systemMaterial"
+      />
     </Animated.View>
   )
 }

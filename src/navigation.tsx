@@ -77,7 +77,11 @@ const HomeTabs = createBottomTabNavigator({
         bottom: 0,
       },
       tabBarBackground: () => (
-        <BlurView intensity={100} style={[StyleSheet.absoluteFill]} />
+        <BlurView
+          intensity={100}
+          style={[StyleSheet.absoluteFill]}
+          tint="systemMaterial"
+        />
       ),
     }
   },
