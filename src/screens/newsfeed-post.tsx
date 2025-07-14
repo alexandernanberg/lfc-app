@@ -29,6 +29,7 @@ import type { Comment } from '~/api'
 import { AnimatedHeaderBackground } from '~/components/animated-header-background'
 import { InstagramEmbed } from '~/components/instagram-embed'
 import { ScrollProvider, useScrollContext } from '~/components/scroll-context'
+import { Separator } from '~/components/separator'
 import { Text } from '~/components/text'
 import { useTheme } from '~/components/theme-context'
 import { TweetEmbed } from '~/components/twitter-embed'
@@ -207,6 +208,7 @@ function Content({ id }: { id: string }) {
             </View>
           )}
         </View>
+        <Separator />
         <Suspense fallback={<ActivityIndicator />}>
           <Comments postId={id} />
         </Suspense>
@@ -242,35 +244,29 @@ interface CommentsProps {
 }
 
 function Comments({ postId }: CommentsProps) {
-  const theme = useTheme()
   const { data: comments } = useSuspenseQuery(postCommentsQuery(postId))
 
   return (
-    <>
-      <Text
-        variant="headingXSmall"
-        style={{
-          paddingVertical: 12,
-          borderBottomWidth: StyleSheet.hairlineWidth,
-          borderColor: theme.borderBase,
-        }}
-      >
-        {comments.length} {comments.length === 1 ? 'kommentar' : 'kommentarer'}
-      </Text>
-      <View style={{ flex: 1, gap: 16, paddingBottom: 32, paddingTop: 16 }}>
-        {comments.map((comment) => (
-          <Comment key={comment.id} comment={comment}>
-            {!!comment.replies.length && (
-              <View style={{ paddingLeft: 40, paddingTop: 12, gap: 12 }}>
-                {comment.replies.map((reply) => (
-                  <Comment key={reply.id} comment={reply} />
-                ))}
-              </View>
-            )}
-          </Comment>
-        ))}
-      </View>
-    </>
+    <View
+      style={{
+        flex: 1,
+        gap: 16,
+        paddingBottom: 32,
+        paddingTop: 24,
+      }}
+    >
+      {comments.map((comment) => (
+        <Comment key={comment.id} comment={comment}>
+          {!!comment.replies.length && (
+            <View style={{ paddingLeft: 40, paddingTop: 12, gap: 12 }}>
+              {comment.replies.map((reply) => (
+                <Comment key={reply.id} comment={reply} />
+              ))}
+            </View>
+          )}
+        </Comment>
+      ))}
+    </View>
   )
 }
 
@@ -290,16 +286,25 @@ function Comment({ comment, children }: CommentProps) {
           gap: 8,
         }}
       >
-        <Image
-          source={comment.author.avatarUrl}
-          contentFit="cover"
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: 999,
-            overflow: 'hidden',
-          }}
-        />
+        {comment.author.avatarUrl ? (
+          <Image
+            source={comment.author.avatarUrl}
+            contentFit="cover"
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 999,
+              overflow: 'hidden',
+            }}
+          />
+        ) : (
+          <SFSymbol
+            name="person.crop.circle.fill"
+            size={32}
+            weight="light"
+            colors={[theme.foregroundBaseMuted]}
+          />
+        )}
 
         <View style={{ gap: 6, flex: 1 }}>
           <View style={{ flexDirection: 'row' }}>

@@ -194,7 +194,9 @@ function parseComment(input: unknown): Comment {
     author: {
       id: input.MemberId,
       name: input.UserName,
-      avatarUrl: input.ImageName,
+      avatarUrl: input.ImageName?.endsWith('default-avatar-generic.png')
+        ? null
+        : input.ImageName,
       url: input.Url,
     },
     numberOfLikes: input.NumberOfLikes,
