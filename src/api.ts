@@ -87,7 +87,6 @@ export async function getFixtureEvents(id: string) {
 // Normalizers
 ///////////////////////////////////////////////////////////
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function isObject(input: unknown): input is any {
   return typeof input === 'object' && input !== null
 }
@@ -107,7 +106,6 @@ function parsePost(input: unknown): Post {
     slug: input.Url,
     url: `https://lfc.nu${input.Url ?? ''}`,
     content: preprocessPostHtml(input.ContentText ?? ''),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     tags:
       input.TagList?.map((tag: any) => ({
         id: tag.TagId,

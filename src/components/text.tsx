@@ -1,8 +1,8 @@
-/* eslint-disable react-native/no-unused-styles */
 import type { ReactNode } from 'react'
 import type { TextProps as BaseTextProps } from 'react-native'
 import { Text as BaseText, StyleSheet } from 'react-native'
-import { textStyles, type Theme } from '~/theme'
+import type { Theme } from '~/theme'
+import { textStyles } from '~/theme'
 import { useTheme } from './theme-context'
 
 export interface TextProps extends BaseTextProps {

@@ -10,7 +10,8 @@ import {
 } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { BlurView } from 'expo-blur'
-import { StyleSheet, type ColorSchemeName } from 'react-native'
+import type { ColorSchemeName } from 'react-native'
+import { StyleSheet } from 'react-native'
 import SFSymbol from 'sweet-sfsymbols'
 import { FixturesScreen } from './screens/fixtures'
 import { FixturesGameScreen } from './screens/fixtures-game'
@@ -148,7 +149,6 @@ type RootStackParamList = StaticParamList<typeof RootStack>
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace ReactNavigation {
-    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
     interface RootParamList extends RootStackParamList {}
   }
 }

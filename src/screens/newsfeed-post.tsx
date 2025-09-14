@@ -221,13 +221,13 @@ const renderers = {
   iframe: IframeRenderer,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   'tweet-embed': (props: any) => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     const tweetId = props.tnode.attributes.id as string
     return <TweetEmbed tweetId={tweetId} />
   },
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   'instagram-embed': (props: any) => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     const postId = props.tnode.attributes.id as string
     return <InstagramEmbed postId={postId} />
   },
