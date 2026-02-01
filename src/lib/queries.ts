@@ -72,6 +72,12 @@ function memberQuery(token: string | undefined) {
   })
 }
 
+const standingsQuery = queryOptions({
+  queryKey: ['standings'],
+  queryFn: () => api.standings.get(),
+  staleTime: 5 * 60 * 1000,
+})
+
 export {
   fixtureEventsQuery,
   fixtureQuery,
@@ -81,4 +87,5 @@ export {
   postCommentsQuery,
   postQuery,
   postsQuery,
+  standingsQuery,
 }
