@@ -196,14 +196,14 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 // API Functions
 ///////////////////////////////////////////////////////////
 
-export async function getPost(id: string) {
+async function getPost(id: string) {
   const data = await request<ApiPost>('/News/GetNewsById', {
     searchParams: { NewsId: id },
   })
   return parsePost(data)
 }
 
-export async function listPosts(limit = 10, offset = 0) {
+async function listPosts(limit = 10, offset = 0) {
   // REST API doesn't have limit and offset but only limit/items.
   const data = await request<ApiPost[]>('/News/GetNewsList', {
     searchParams: { items: (limit + offset).toString() },
@@ -211,19 +211,19 @@ export async function listPosts(limit = 10, offset = 0) {
   return data.slice(offset).map(parsePost)
 }
 
-export async function getComments(id: string) {
+async function listComments(postId: string) {
   const data = await request<ApiComment[]>('/Comment/GetCommentList', {
-    searchParams: { NewsId: id },
+    searchParams: { NewsId: postId },
   })
   return data.map(parseComment)
 }
 
-export async function listSeasons() {
+async function listSeasons() {
   const data = await request<ApiSeason[]>('/Fixture/GetSeasonList')
   return data.map(parseSeason)
 }
 
-export async function listFixtures() {
+async function listFixtures() {
   const seasons = await listSeasons()
   const seasonId = seasons.at(0)?.id ?? '36'
 
@@ -233,28 +233,28 @@ export async function listFixtures() {
   return data.map(parseFixtureSlim)
 }
 
-export async function getFixture(id: string) {
+async function getFixture(id: string) {
   const data = await request<ApiFixture>('/Fixture/GetFixtureById', {
     searchParams: { fixtureId: id },
   })
   return parseFixture(data)
 }
 
-export async function getFixtureStats(id: string) {
+async function getFixtureStats(id: string) {
   const data = await request<ApiFixtureStats>('/Fixture/GetFixtureTeamStats', {
     searchParams: { fixtureId: id },
   })
   return parseFixtureStats(data)
 }
 
-export async function getFixtureEvents(id: string) {
+async function getFixtureEvents(id: string) {
   const data = await request<ApiFixtureEvent[]>('/Fixture/GetFixtureEvents', {
     searchParams: { fixtureId: id },
   })
   return data.map(parseFixtureEvent)
 }
 
-export async function getStandings() {
+async function getStandings() {
   const data = await request<ApiStanding[]>('/Standing/GetStanding')
   return data.map(parseStanding)
 }
@@ -280,10 +280,7 @@ export class AuthError extends Error {
   }
 }
 
-export async function login(
-  username: string,
-  password: string,
-): Promise<Session> {
+async function login(username: string, password: string): Promise<Session> {
   const data = await request<any>('/Login', {
     method: 'POST',
     body: { Username: username, Password: password },
@@ -305,7 +302,7 @@ export async function login(
   return parseSession(data)
 }
 
-export async function logout(): Promise<void> {
+async function logout(): Promise<void> {
   // Best-effort: clear the server-side session. We always clear locally
   // regardless of the result, so swallow network/server errors here.
   try {
@@ -315,7 +312,7 @@ export async function logout(): Promise<void> {
   }
 }
 
-export async function getMemberInformation(): Promise<Member> {
+async function getMemberInformation(): Promise<Member> {
   const data = await request<any>('/Member/GetMemberInformation')
   return parseMember(data)
 }
@@ -821,7 +818,7 @@ export const api = {
     list: listPosts,
   },
   comments: {
-    list: getComments,
+    list: listComments,
   },
   seasons: {
     list: listSeasons,

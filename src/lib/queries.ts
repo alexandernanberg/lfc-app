@@ -1,19 +1,10 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query'
-import {
-  getComments,
-  getFixture,
-  getFixtureEvents,
-  getFixtureStats,
-  getMemberInformation,
-  getPost,
-  listFixtures,
-  listPosts,
-} from '~/api'
+import { api } from '~/api'
 import { queryClient } from './query-client'
 
 const postsQuery = infiniteQueryOptions({
   queryKey: ['posts'],
-  queryFn: ({ pageParam }) => listPosts(10, (pageParam - 1) * 10),
+  queryFn: ({ pageParam }) => api.posts.list(10, (pageParam - 1) * 10),
   initialPageParam: 1,
   getNextPageParam: (firstPage, allPages, lastPageParam) => lastPageParam + 1,
   staleTime: 5 * 60 * 1000,
@@ -22,7 +13,7 @@ const postsQuery = infiniteQueryOptions({
 function postQuery(id: string) {
   return queryOptions({
     queryKey: ['post', id],
-    queryFn: () => getPost(id),
+    queryFn: () => api.posts.get(id),
     placeholderData: () => {
       return queryClient
         .getQueryData(postsQuery.queryKey)
@@ -36,14 +27,14 @@ function postQuery(id: string) {
 function postCommentsQuery(id: string) {
   return queryOptions({
     queryKey: ['post-comments', id],
-    queryFn: () => getComments(id),
+    queryFn: () => api.comments.list(id),
     refetchInterval: 60_000,
   })
 }
 
 const fixturesQuery = queryOptions({
   queryKey: ['fixtures'],
-  queryFn: () => listFixtures(),
+  queryFn: () => api.fixtures.list(),
   // TODO: only stale when day has changed?
   staleTime: 5 * 60 * 1000,
 })
@@ -51,7 +42,7 @@ const fixturesQuery = queryOptions({
 const fixtureQuery = (id: string) => {
   return queryOptions({
     queryKey: ['fixture', id],
-    queryFn: () => getFixture(id),
+    queryFn: () => api.fixtures.get(id),
     staleTime: 5 * 60 * 1000,
   })
 }
@@ -59,7 +50,7 @@ const fixtureQuery = (id: string) => {
 const fixtureStatsQuery = (id: string) => {
   return queryOptions({
     queryKey: ['fixture', 'stats', id],
-    queryFn: () => getFixtureStats(id),
+    queryFn: () => api.fixtures.getStats(id),
     staleTime: 5 * 60 * 1000,
   })
 }
@@ -67,7 +58,7 @@ const fixtureStatsQuery = (id: string) => {
 const fixtureEventsQuery = (id: string) => {
   return queryOptions({
     queryKey: ['fixture', 'events', id],
-    queryFn: () => getFixtureEvents(id),
+    queryFn: () => api.fixtures.getEvents(id),
     staleTime: 5 * 60 * 1000,
   })
 }
@@ -75,7 +66,7 @@ const fixtureEventsQuery = (id: string) => {
 function memberQuery(token: string | undefined) {
   return queryOptions({
     queryKey: ['member', token],
-    queryFn: () => getMemberInformation(),
+    queryFn: () => api.auth.getMember(),
     enabled: token != null,
     staleTime: 5 * 60 * 1000,
   })
