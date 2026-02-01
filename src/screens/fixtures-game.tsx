@@ -425,8 +425,8 @@ function MatchInfo({ fixture }: MatchInfoProps) {
       <MatchInfoRow label="Tid">{fixture.startsAtTime}</MatchInfoRow>
       <Separator />
       <MatchInfoRow label="Åskådare">
-        {fixture.attendence !== 0
-          ? numberFormatter.format(fixture.attendence)
+        {fixture.attendance !== 0
+          ? numberFormatter.format(fixture.attendance)
           : '-'}
       </MatchInfoRow>
       <Separator />
