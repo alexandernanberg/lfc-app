@@ -11,7 +11,7 @@ interface ThemeProviderProps {
 }
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
-  const colorScheme = useColorScheme() ?? 'light'
+  const colorScheme = useColorScheme() === 'dark' ? 'dark' : 'light'
   const theme = themes[colorScheme]
 
   return <ThemeContext.Provider value={theme}>{children}</ThemeContext.Provider>

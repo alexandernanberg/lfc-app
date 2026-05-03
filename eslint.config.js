@@ -1,7 +1,7 @@
 import baseConfig from 'eslint-config-alexandernanberg/base'
 import reactConfig from 'eslint-config-alexandernanberg/react'
-import { defineConfig } from 'eslint/config'
 import reactNative from 'eslint-plugin-react-native'
+import { defineConfig } from 'eslint/config'
 
 export default defineConfig([
   ...baseConfig,

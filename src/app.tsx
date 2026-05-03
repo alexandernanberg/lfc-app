@@ -1,6 +1,5 @@
 import 'react-native-gesture-handler'
 import 'react-native-url-polyfill/auto'
-
 import { QueryClientProvider } from '@tanstack/react-query'
 import { registerRootComponent } from 'expo'
 import { useColorScheme } from 'react-native'

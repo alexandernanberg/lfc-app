@@ -564,7 +564,7 @@ function StatRow({
   isAwayGame,
   formatOptions,
 }: StatRowProps) {
-  const colorScheme = useColorScheme() ?? 'light'
+  const colorScheme = useColorScheme() === 'dark' ? 'dark' : 'light'
   const numberFormatter = useNumberFormatter('sv-SE', formatOptions)
 
   const valueSum = homeValue + awayValue

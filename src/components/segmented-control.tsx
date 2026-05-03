@@ -23,7 +23,7 @@ export function SegmentedControl({
   selectedIndex = 0,
 }: SegmentedControlsProps) {
   const theme = useTheme()
-  const colorScheme = useColorScheme() ?? 'light'
+  const colorScheme = useColorScheme() === 'dark' ? 'dark' : 'light'
   const animatedValue = useSharedValue(0)
   const [containerWidth, setContainerWidth] = useState(0)
 

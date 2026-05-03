@@ -40,7 +40,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   experiments: {
     reactCompiler: true,
   },
-  plugins: ['expo-build-properties'],
+  plugins: ['expo-build-properties', 'expo-image', 'expo-sharing'],
   extra: {
     eas: {
       projectId: '6184674a-4321-4159-9079-2e70ef8440f1',
