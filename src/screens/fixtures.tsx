@@ -1,3 +1,5 @@
+import { LegendList } from '@legendapp/list'
+import type { LegendListRef } from '@legendapp/list'
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
 import { useNavigation, useScrollToTop } from '@react-navigation/native'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -6,7 +8,7 @@ import type { Locale } from 'date-fns/locale'
 import { sv } from 'date-fns/locale'
 import { Image } from 'expo-image'
 import { Suspense, useMemo, useRef, useState } from 'react'
-import { FlatList, Pressable, StyleSheet, View } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { FixtureSlim } from '~/api'
 import { AnimatedHeaderBackground } from '~/components/animated-header-background'
@@ -44,7 +46,7 @@ function List() {
   const lastFixture = useMemo(() => findLastFixture(data), [data])
   const lastFixtureIndex = lastFixture ? data.indexOf(lastFixture) : 0
 
-  const ref = useRef<FlatList<FixtureSlim>>(null)
+  const ref = useRef<LegendListRef>(null)
   useScrollToTop(
     useRef({
       scrollToTop: () =>
@@ -56,28 +58,30 @@ function List() {
   )
 
   return (
-    <FlatList
+    <LegendList
       ref={ref}
       data={data}
       keyExtractor={(item) => item.id}
       contentInsetAdjustmentBehavior="automatic"
-      contentInset={{ bottom: tabBarHeight - insets.bottom }}
       scrollIndicatorInsets={{ bottom: tabBarHeight - insets.bottom }}
-      scrollToOverflowEnabled
+      renderScrollComponent={(props) => (
+        <ScrollView
+          {...props}
+          contentInset={{ bottom: tabBarHeight - insets.bottom }}
+          scrollToOverflowEnabled
+        />
+      )}
       style={{
         paddingHorizontal: 17,
       }}
-      renderItem={({ item }) => <Card key={item.id} fixture={item} />}
-      getItemLayout={(_, index) => ({
-        index,
-        length: ROW_HEIGHT,
-        offset: ROW_HEIGHT * index,
-      })}
+      renderItem={({ item }) => <Card fixture={item} />}
+      estimatedItemSize={ROW_HEIGHT}
       ItemSeparatorComponent={Separator}
-      initialNumToRender={lastFixtureIndex + 10}
       initialScrollIndex={lastFixtureIndex}
       onScroll={onScroll}
       scrollEventThrottle={16}
+      recycleItems
+      maintainVisibleContentPosition
     />
   )
 }

@@ -1,3 +1,5 @@
+import { LegendList } from '@legendapp/list'
+import type { LegendListRef } from '@legendapp/list'
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
 import { useNavigation, useScrollToTop } from '@react-navigation/native'
 import { useSuspenseInfiniteQuery } from '@tanstack/react-query'
@@ -5,9 +7,9 @@ import { Image } from 'expo-image'
 import { Suspense, useCallback, useRef } from 'react'
 import {
   ActivityIndicator,
-  FlatList,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   View,
 } from 'react-native'
@@ -54,7 +56,7 @@ function List() {
 
   const posts = data.pages.flat()
 
-  const ref = useRef<FlatList<Post>>(null)
+  const ref = useRef<LegendListRef>(null)
   useScrollToTop(
     useRef({
       scrollToTop: () =>
@@ -65,14 +67,19 @@ function List() {
   )
 
   return (
-    <FlatList
+    <LegendList
       ref={ref}
       data={posts}
       keyExtractor={(item) => item.id}
       contentInsetAdjustmentBehavior="automatic"
-      contentInset={{ bottom: tabBarHeight - insets.bottom }}
       scrollIndicatorInsets={{ bottom: tabBarHeight - insets.bottom }}
-      scrollToOverflowEnabled
+      renderScrollComponent={(props) => (
+        <ScrollView
+          {...props}
+          contentInset={{ bottom: tabBarHeight - insets.bottom }}
+          scrollToOverflowEnabled
+        />
+      )}
       style={{
         paddingHorizontal: 17,
       }}
@@ -82,6 +89,7 @@ function List() {
       renderItem={({ item, index }) => (
         <Card post={item} featured={index === 0} />
       )}
+      getEstimatedItemSize={(index) => (index === 0 ? 440 : 110)}
       ItemSeparatorComponent={Separator}
       ListFooterComponent={
         isFetchingNextPage ? (
@@ -92,6 +100,8 @@ function List() {
       onEndReachedThreshold={0.5}
       onScroll={onScroll}
       scrollEventThrottle={16}
+      recycleItems
+      maintainVisibleContentPosition
     />
   )
 }
