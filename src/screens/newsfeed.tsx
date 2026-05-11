@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import SFSymbol from 'sweet-sfsymbols'
+import SFSymbol from 'sf-symbols'
 import type { Post } from '~/api'
 import { AnimatedHeaderBackground } from '~/components/animated-header-background'
 import { ScrollProvider, useScrollContext } from '~/components/scroll-context'

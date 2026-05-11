@@ -24,7 +24,7 @@ import type {
 import { defaultHTMLElementModels, RenderHTML } from 'react-native-render-html'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import WebView from 'react-native-webview'
-import SFSymbol from 'sweet-sfsymbols'
+import SFSymbol from 'sf-symbols'
 import type { Comment } from '~/api'
 import { AnimatedHeaderBackground } from '~/components/animated-header-background'
 import { InstagramEmbed } from '~/components/instagram-embed'

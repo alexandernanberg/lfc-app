@@ -1,0 +1,13 @@
+{
+  "name": "sf-symbols",
+  "version": "0.0.0",
+  "private": true,
+  "main": "src/index.tsx",
+  "types": "src/index.tsx",
+  "peerDependencies": {
+    "expo-modules-core": "*",
+    "react": "*",
+    "react-native": "*",
+    "sf-symbols-typescript": "*"
+  }
+}

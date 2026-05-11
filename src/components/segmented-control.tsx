@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   segementBackground: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: colors.white,
     borderRadius: 10,
     boxShadow: `0 1px 3px ${alphaColor(colors.black, 0.1)}`,
