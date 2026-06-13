@@ -1,5 +1,4 @@
 import IframeRenderer, { iframeModel } from '@native-html/iframe-plugin'
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
 import type { StaticScreenProps } from '@react-navigation/native'
 import { useNavigation } from '@react-navigation/native'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
@@ -22,7 +21,6 @@ import type {
   TRenderEngineConfig,
 } from 'react-native-render-html'
 import { defaultHTMLElementModels, RenderHTML } from 'react-native-render-html'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import WebView from 'react-native-webview'
 import SFSymbol from 'sf-symbols'
 import type { Comment } from '~/api'
@@ -75,8 +73,6 @@ export function NewsfeedPostShareButton({ url }: { url?: string }) {
 }
 
 function Content({ id }: { id: string }) {
-  const tabBarHeight = useBottomTabBarHeight()
-  const insets = useSafeAreaInsets()
   const theme = useTheme()
   const { width } = useWindowDimensions()
   const { onScroll } = useScrollContext()
@@ -100,8 +96,6 @@ function Content({ id }: { id: string }) {
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
-      contentInset={{ bottom: tabBarHeight - insets.bottom }}
-      scrollIndicatorInsets={{ bottom: tabBarHeight - insets.bottom }}
       onScroll={onScroll}
       scrollEventThrottle={16}
     >

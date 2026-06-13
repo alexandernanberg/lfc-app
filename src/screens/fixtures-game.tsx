@@ -1,11 +1,9 @@
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
 import type { StaticScreenProps } from '@react-navigation/native'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { Image } from 'expo-image'
 import type { ReactNode } from 'react'
 import { Suspense, useState } from 'react'
 import { ScrollView, StyleSheet, useColorScheme, View } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import SFSymbol from 'sf-symbols'
 import type { Fixture, FixtureEvent } from '~/api'
 import { AnimatedHeaderBackground } from '~/components/animated-header-background'
@@ -40,8 +38,6 @@ export function FixturesGameScreen({ route }: Props) {
 }
 
 function Content({ id }: { id: string }) {
-  const tabBarHeight = useBottomTabBarHeight()
-  const insets = useSafeAreaInsets()
   const { onScroll } = useScrollContext()
 
   // TODO: Use suspense query when it works with placeholder data
@@ -54,8 +50,6 @@ function Content({ id }: { id: string }) {
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
-      contentInset={{ bottom: tabBarHeight - insets.bottom }}
-      scrollIndicatorInsets={{ bottom: tabBarHeight - insets.bottom }}
       onScroll={onScroll}
       scrollEventThrottle={16}
     >

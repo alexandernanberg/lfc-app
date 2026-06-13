@@ -1,10 +1,9 @@
 import { LegendList } from '@legendapp/list'
 import type { LegendListRef } from '@legendapp/list'
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
 import { useNavigation, useScrollToTop } from '@react-navigation/native'
 import { useSuspenseInfiniteQuery } from '@tanstack/react-query'
 import { Image } from 'expo-image'
-import { Suspense, useCallback, useRef } from 'react'
+import { Suspense, useCallback, useMemo, useRef } from 'react'
 import {
   ActivityIndicator,
   Pressable,
@@ -13,7 +12,6 @@ import {
   StyleSheet,
   View,
 } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import SFSymbol from 'sf-symbols'
 import type { Post } from '~/api'
 import { AnimatedHeaderBackground } from '~/components/animated-header-background'
@@ -37,8 +35,6 @@ export function NewsfeedScreen() {
 }
 
 function List() {
-  const insets = useSafeAreaInsets()
-  const tabBarHeight = useBottomTabBarHeight()
   const { onScroll, offsetY } = useScrollContext()
 
   const { data, isRefetching, refetch, fetchNextPage, isFetchingNextPage } =
@@ -54,7 +50,14 @@ function List() {
     }
   }, [fetchNextPage, isFetchingNextPage])
 
-  const posts = data.pages.flat()
+  const posts = useMemo(() => {
+    const seen = new Set<string>()
+    return data.pages.flat().filter((p) => {
+      if (seen.has(p.id)) return false
+      seen.add(p.id)
+      return true
+    })
+  }, [data])
 
   const ref = useRef<LegendListRef>(null)
   useScrollToTop(
@@ -72,13 +75,8 @@ function List() {
       data={posts}
       keyExtractor={(item) => item.id}
       contentInsetAdjustmentBehavior="automatic"
-      scrollIndicatorInsets={{ bottom: tabBarHeight - insets.bottom }}
       renderScrollComponent={(props) => (
-        <ScrollView
-          {...props}
-          contentInset={{ bottom: tabBarHeight - insets.bottom }}
-          scrollToOverflowEnabled
-        />
+        <ScrollView {...props} scrollToOverflowEnabled />
       )}
       style={{
         paddingHorizontal: 17,

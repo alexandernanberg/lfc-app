@@ -1,4 +1,4 @@
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
+import { createNativeBottomTabNavigator } from '@react-navigation/bottom-tabs/unstable'
 import type {
   Theme as NavigationTheme,
   StaticParamList,
@@ -9,10 +9,7 @@ import {
   DefaultTheme,
 } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
-import { BlurView } from 'expo-blur'
 import type { ColorSchemeName } from 'react-native'
-import { StyleSheet } from 'react-native'
-import SFSymbol from 'sf-symbols'
 import { FixturesScreen } from './screens/fixtures'
 import { FixturesGameScreen } from './screens/fixtures-game'
 import { NewsfeedScreen } from './screens/newsfeed'
@@ -69,21 +66,11 @@ const FixturesNavigator = createNativeStackNavigator({
   },
 })
 
-const HomeTabs = createBottomTabNavigator({
-  screenOptions: () => {
+const HomeTabs = createNativeBottomTabNavigator({
+  screenOptions: ({ theme }) => {
     return {
       headerShown: false,
-      tabBarStyle: {
-        position: 'absolute',
-        bottom: 0,
-      },
-      tabBarBackground: () => (
-        <BlurView
-          intensity={100}
-          style={[StyleSheet.absoluteFill]}
-          tint="systemMaterial"
-        />
-      ),
+      tabBarActiveTintColor: theme.colors.primary,
     }
   },
   screens: {
@@ -91,40 +78,20 @@ const HomeTabs = createBottomTabNavigator({
       screen: NewsfeedNavigator,
       options: {
         title: 'Nyheter',
-        tabBarIcon: ({ color, focused, size }) => {
-          const iconName = focused
-            ? ('newspaper.fill' as const)
-            : ('newspaper' as const)
-          return (
-            <SFSymbol
-              name={iconName}
-              weight="regular"
-              scale="small"
-              colors={[color]}
-              size={size}
-            />
-          )
-        },
+        tabBarIcon: ({ focused }) => ({
+          type: 'sfSymbol',
+          name: focused ? 'newspaper.fill' : 'newspaper',
+        }),
       },
     },
     Fixtures: {
       screen: FixturesNavigator,
       options: {
         title: 'Matcher',
-        tabBarIcon: ({ color, focused, size }) => {
-          const iconName = focused
-            ? ('sportscourt.fill' as const)
-            : ('sportscourt' as const)
-          return (
-            <SFSymbol
-              name={iconName}
-              weight="regular"
-              scale="small"
-              colors={[color]}
-              size={size}
-            />
-          )
-        },
+        tabBarIcon: ({ focused }) => ({
+          type: 'sfSymbol',
+          name: focused ? 'sportscourt.fill' : 'sportscourt',
+        }),
       },
     },
   },
