@@ -24,9 +24,7 @@ import { defaultHTMLElementModels, RenderHTML } from 'react-native-render-html'
 import WebView from 'react-native-webview'
 import SFSymbol from 'sf-symbols'
 import type { Comment } from '~/api'
-import { AnimatedHeaderBackground } from '~/components/animated-header-background'
 import { InstagramEmbed } from '~/components/instagram-embed'
-import { ScrollProvider, useScrollContext } from '~/components/scroll-context'
 import { Separator } from '~/components/separator'
 import { Text } from '~/components/text'
 import { useTheme } from '~/components/theme-context'
@@ -41,12 +39,9 @@ type Props = StaticScreenProps<{
 
 export function NewsfeedPostScreen({ route }: Props) {
   return (
-    <ScrollProvider>
-      <AnimatedHeaderBackground />
-      <Suspense fallback={null}>
-        <Content id={route.params.id} />
-      </Suspense>
-    </ScrollProvider>
+    <Suspense fallback={null}>
+      <Content id={route.params.id} />
+    </Suspense>
   )
 }
 
@@ -75,7 +70,6 @@ export function NewsfeedPostShareButton({ url }: { url?: string }) {
 function Content({ id }: { id: string }) {
   const theme = useTheme()
   const { width } = useWindowDimensions()
-  const { onScroll } = useScrollContext()
   const navigation = useNavigation()
 
   // TODO: Use suspense query when it works with placeholder data
@@ -94,11 +88,7 @@ function Content({ id }: { id: string }) {
   const content = `<p><strong>${post.excerpt}</strong></p>${post.content}`
 
   return (
-    <ScrollView
-      contentInsetAdjustmentBehavior="automatic"
-      onScroll={onScroll}
-      scrollEventThrottle={16}
-    >
+    <ScrollView contentInsetAdjustmentBehavior="automatic">
       <View style={{ padding: 17 }}>
         <Text
           variant="headingLarge"

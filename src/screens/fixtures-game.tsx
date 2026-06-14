@@ -6,8 +6,6 @@ import { Suspense, useState } from 'react'
 import { ScrollView, StyleSheet, useColorScheme, View } from 'react-native'
 import SFSymbol from 'sf-symbols'
 import type { Fixture, FixtureEvent } from '~/api'
-import { AnimatedHeaderBackground } from '~/components/animated-header-background'
-import { ScrollProvider, useScrollContext } from '~/components/scroll-context'
 import { SegmentedControl } from '~/components/segmented-control'
 import { Separator } from '~/components/separator'
 import { Text } from '~/components/text'
@@ -28,18 +26,13 @@ type Props = StaticScreenProps<{
 
 export function FixturesGameScreen({ route }: Props) {
   return (
-    <ScrollProvider>
-      <AnimatedHeaderBackground />
-      <Suspense fallback={null}>
-        <Content id={route.params.id} />
-      </Suspense>
-    </ScrollProvider>
+    <Suspense fallback={null}>
+      <Content id={route.params.id} />
+    </Suspense>
   )
 }
 
 function Content({ id }: { id: string }) {
-  const { onScroll } = useScrollContext()
-
   // TODO: Use suspense query when it works with placeholder data
   const { data: fixture } = useQuery(fixtureQuery(id))
 
@@ -48,11 +41,7 @@ function Content({ id }: { id: string }) {
   }
 
   return (
-    <ScrollView
-      contentInsetAdjustmentBehavior="automatic"
-      onScroll={onScroll}
-      scrollEventThrottle={16}
-    >
+    <ScrollView contentInsetAdjustmentBehavior="automatic">
       <FixtureResult fixture={fixture} />
 
       <View style={{ padding: 17, paddingBlock: 0 }}>

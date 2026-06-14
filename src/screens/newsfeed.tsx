@@ -12,30 +12,27 @@ import {
   StyleSheet,
   View,
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import SFSymbol from 'sf-symbols'
 import type { Post } from '~/api'
-import { AnimatedHeaderBackground } from '~/components/animated-header-background'
-import { ScrollProvider, useScrollContext } from '~/components/scroll-context'
 import { Separator } from '~/components/separator'
 import { Text } from '~/components/text'
 import { useTheme } from '~/components/theme-context'
+import { TAB_BAR_HEIGHT } from '~/lib/layout'
 import { postQuery, postsQuery } from '~/lib/queries'
 import { queryClient } from '~/lib/query-client'
 import { RelativeTime } from '~/lib/use-relative-time-formatter'
 
 export function NewsfeedScreen() {
   return (
-    <ScrollProvider>
-      <AnimatedHeaderBackground />
-      <Suspense fallback={null}>
-        <List />
-      </Suspense>
-    </ScrollProvider>
+    <Suspense fallback={null}>
+      <List />
+    </Suspense>
   )
 }
 
 function List() {
-  const { onScroll, offsetY } = useScrollContext()
+  const insets = useSafeAreaInsets()
 
   const { data, isRefetching, refetch, fetchNextPage, isFetchingNextPage } =
     useSuspenseInfiniteQuery(postsQuery)
@@ -64,7 +61,7 @@ function List() {
     useRef({
       scrollToTop: () =>
         ref.current?.scrollToOffset({
-          offset: offsetY,
+          offset: -insets.top,
         }),
     }),
   )
@@ -74,12 +71,21 @@ function List() {
       ref={ref}
       data={posts}
       keyExtractor={(item) => item.id}
-      contentInsetAdjustmentBehavior="automatic"
+      contentInsetAdjustmentBehavior="never"
       renderScrollComponent={(props) => (
-        <ScrollView {...props} scrollToOverflowEnabled />
+        <ScrollView
+          {...props}
+          scrollToOverflowEnabled
+          automaticallyAdjustContentInsets={false}
+          contentInset={{ top: insets.top }}
+          contentOffset={{ x: 0, y: -insets.top }}
+        />
       )}
       style={{
         paddingHorizontal: 17,
+      }}
+      contentContainerStyle={{
+        paddingBottom: insets.bottom + TAB_BAR_HEIGHT,
       }}
       refreshControl={
         <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} />
@@ -96,8 +102,6 @@ function List() {
       }
       onEndReached={onEndReched}
       onEndReachedThreshold={0.5}
-      onScroll={onScroll}
-      scrollEventThrottle={16}
       recycleItems
       maintainVisibleContentPosition
     />

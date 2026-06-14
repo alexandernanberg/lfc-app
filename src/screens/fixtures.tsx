@@ -8,9 +8,8 @@ import { sv } from 'date-fns/locale'
 import { Image } from 'expo-image'
 import { Suspense, useMemo, useRef, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { FixtureSlim } from '~/api'
-import { AnimatedHeaderBackground } from '~/components/animated-header-background'
-import { ScrollProvider, useScrollContext } from '~/components/scroll-context'
 import { Separator } from '~/components/separator'
 import { Text } from '~/components/text'
 import {
@@ -19,23 +18,21 @@ import {
   fixturesQuery,
   fixtureStatsQuery,
 } from '~/lib/queries'
+import { TAB_BAR_HEIGHT } from '~/lib/layout'
 import { queryClient } from '~/lib/query-client'
 import { useInterval } from '~/lib/use-interval'
 import { capitalizeFirstLetter } from '~/utils'
 
 export function FixturesScreen() {
   return (
-    <ScrollProvider>
-      <AnimatedHeaderBackground />
-      <Suspense fallback={null}>
-        <List />
-      </Suspense>
-    </ScrollProvider>
+    <Suspense fallback={null}>
+      <List />
+    </Suspense>
   )
 }
 
 function List() {
-  const { onScroll, offsetY } = useScrollContext()
+  const insets = useSafeAreaInsets()
 
   const { data } = useSuspenseQuery(fixturesQuery)
 
@@ -48,7 +45,7 @@ function List() {
       scrollToTop: () =>
         ref.current?.scrollToIndex({
           index: lastFixtureIndex,
-          viewOffset: -offsetY,
+          viewOffset: insets.top,
         }),
     }),
   )
@@ -58,19 +55,26 @@ function List() {
       ref={ref}
       data={data}
       keyExtractor={(item) => item.id}
-      contentInsetAdjustmentBehavior="automatic"
+      contentInsetAdjustmentBehavior="never"
       renderScrollComponent={(props) => (
-        <ScrollView {...props} scrollToOverflowEnabled />
+        <ScrollView
+          {...props}
+          scrollToOverflowEnabled
+          automaticallyAdjustContentInsets={false}
+          contentInset={{ top: insets.top }}
+          contentOffset={{ x: 0, y: -insets.top }}
+        />
       )}
       style={{
         paddingHorizontal: 17,
       }}
+      contentContainerStyle={{
+        paddingBottom: insets.bottom + TAB_BAR_HEIGHT,
+      }}
       renderItem={({ item }) => <Card fixture={item} />}
       estimatedItemSize={ROW_HEIGHT}
       ItemSeparatorComponent={Separator}
-      initialScrollIndex={lastFixtureIndex}
-      onScroll={onScroll}
-      scrollEventThrottle={16}
+      initialScrollIndex={{ index: lastFixtureIndex, viewOffset: insets.top }}
       recycleItems
       maintainVisibleContentPosition
     />
@@ -218,28 +222,6 @@ function TeamRow({ name, logoUrl, goals, winner }: TeamRowProps) {
   )
 }
 
-function findLastFixture(data: FixtureSlim[]): FixtureSlim | null {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  let start = 0
-  let end = data.length - 1
-
-  if (data.length === 0 || data[0]!.startsAt >= today) return null
-
-  while (start < end) {
-    const mid = Math.ceil((start + end) / 2)
-
-    if (data[mid]!.startsAt < today) {
-      start = mid
-    } else {
-      end = mid - 1
-    }
-  }
-
-  return data[start]!.startsAt < today ? data[start]! : null
-}
-
 const formatRelativeLocale = {
   lastWeek: "'i' eeee's'",
   yesterday: "'igår'",
@@ -275,6 +257,29 @@ interface RelativeTimeProps {
 
 function RelativeTime({ date }: RelativeTimeProps) {
   return capitalizeFirstLetter(useRelativeTimeFormatter(date))
+}
+
+// Index of the most recent fixture before today, so the list opens there.
+function findLastFixture(data: FixtureSlim[]): FixtureSlim | null {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  let start = 0
+  let end = data.length - 1
+
+  if (data.length === 0 || data[0]!.startsAt >= today) return null
+
+  while (start < end) {
+    const mid = Math.ceil((start + end) / 2)
+
+    if (data[mid]!.startsAt < today) {
+      start = mid
+    } else {
+      end = mid - 1
+    }
+  }
+
+  return data[start]!.startsAt < today ? data[start]! : null
 }
 
 const ROW_HEIGHT = 100

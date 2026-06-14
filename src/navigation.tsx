@@ -30,7 +30,7 @@ const NewsfeedNavigator = createNativeStackNavigator({
       screen: NewsfeedScreen,
       options: {
         title: 'Nyheter',
-        headerShown: false,
+        headerTitle: '',
       },
     },
     Post: {
@@ -54,7 +54,7 @@ const FixturesNavigator = createNativeStackNavigator({
       screen: FixturesScreen,
       options: {
         title: 'Matcher',
-        headerShown: false,
+        headerTitle: '',
       },
     },
     Game: {
@@ -71,6 +71,7 @@ const HomeTabs = createNativeBottomTabNavigator({
     return {
       headerShown: false,
       tabBarActiveTintColor: theme.colors.primary,
+      overrideScrollViewContentInsetAdjustmentBehavior: false,
     }
   },
   screens: {
