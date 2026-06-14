@@ -1,5 +1,5 @@
-import { LegendList } from '@legendapp/list'
 import type { LegendListRef } from '@legendapp/list'
+import { LegendList } from '@legendapp/list'
 import { useNavigation, useScrollToTop } from '@react-navigation/native'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { formatRelative } from 'date-fns'
@@ -10,17 +10,19 @@ import { Suspense, useMemo, useRef, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { FixtureSlim } from '~/api'
-import { Separator } from '~/components/separator'
 import { Text } from '~/components/text'
+import { useTheme } from '~/components/theme-context'
+import { TAB_BAR_HEIGHT } from '~/lib/layout'
 import {
   fixtureEventsQuery,
   fixtureQuery,
   fixturesQuery,
   fixtureStatsQuery,
 } from '~/lib/queries'
-import { TAB_BAR_HEIGHT } from '~/lib/layout'
 import { queryClient } from '~/lib/query-client'
 import { useInterval } from '~/lib/use-interval'
+import type { Theme } from '~/theme'
+import { colors } from '~/theme'
 import { capitalizeFirstLetter } from '~/utils'
 
 export function FixturesScreen() {
@@ -31,29 +33,29 @@ export function FixturesScreen() {
   )
 }
 
+type ListItem =
+  | { kind: 'header'; id: string; title: string }
+  | { kind: 'fixture'; id: string; fixture: FixtureSlim; isLast: boolean }
+
 function List() {
   const insets = useSafeAreaInsets()
 
   const { data } = useSuspenseQuery(fixturesQuery)
 
-  const lastFixture = useMemo(() => findLastFixture(data), [data])
-  const lastFixtureIndex = lastFixture ? data.indexOf(lastFixture) : 0
+  const items = useMemo(() => buildItems(data), [data])
 
   const ref = useRef<LegendListRef>(null)
   useScrollToTop(
     useRef({
       scrollToTop: () =>
-        ref.current?.scrollToIndex({
-          index: lastFixtureIndex,
-          viewOffset: insets.top,
-        }),
+        ref.current?.scrollToIndex({ index: 0, viewOffset: insets.top }),
     }),
   )
 
   return (
     <LegendList
       ref={ref}
-      data={data}
+      data={items}
       keyExtractor={(item) => item.id}
       contentInsetAdjustmentBehavior="never"
       renderScrollComponent={(props) => (
@@ -65,30 +67,76 @@ function List() {
           contentOffset={{ x: 0, y: -insets.top }}
         />
       )}
-      style={{
-        paddingHorizontal: 17,
-      }}
       contentContainerStyle={{
         paddingBottom: insets.bottom + TAB_BAR_HEIGHT,
       }}
-      renderItem={({ item }) => <Card fixture={item} />}
+      renderItem={({ item }) =>
+        item.kind === 'header' ? (
+          <SectionHeader title={item.title} />
+        ) : (
+          <Card fixture={item.fixture} isLast={item.isLast} />
+        )
+      }
       estimatedItemSize={ROW_HEIGHT}
-      ItemSeparatorComponent={Separator}
-      initialScrollIndex={{ index: lastFixtureIndex, viewOffset: insets.top }}
+      getItemType={(item) => item.kind}
       recycleItems
-      maintainVisibleContentPosition
     />
+  )
+}
+
+// Build the list most-relevant-first so it can simply start at the top: the
+// next upcoming match (soonest first) leads, followed by results (most recent
+// first). For a finished season with no upcoming matches the latest result
+// sits at the top. `data` is chronological (oldest first).
+function buildItems(data: FixtureSlim[]): ListItem[] {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const boundary = data.findIndex((f) => f.startsAt >= today)
+  const splitAt = boundary === -1 ? data.length : boundary
+  const past = data.slice(0, splitAt).reverse()
+  const upcoming = data.slice(splitAt)
+
+  const items: ListItem[] = []
+
+  const pushSection = (id: string, title: string, fixtures: FixtureSlim[]) => {
+    if (fixtures.length === 0) return
+    items.push({ kind: 'header', id, title })
+    fixtures.forEach((fixture, i) => {
+      items.push({
+        kind: 'fixture',
+        id: fixture.id,
+        fixture,
+        isLast: i === fixtures.length - 1,
+      })
+    })
+  }
+
+  pushSection('header-upcoming', 'Kommande matcher', upcoming)
+  pushSection('header-past', 'Resultat', past)
+
+  return items
+}
+
+function SectionHeader({ title }: { title: string }) {
+  return (
+    <View style={styles.header}>
+      <Text variant="headingSmall">{title}</Text>
+    </View>
   )
 }
 
 const lfcLogoUrl =
   'https://res.cloudinary.com/supportersplace/image/upload/w_60,fl_lossy,f_auto,fl_progressive/files_lfc_nu/opponent/lfc-crest.png'
 
+type Outcome = 'win' | 'loss' | 'draw' | 'upcoming'
+
 interface CardProps {
   fixture: FixtureSlim
+  isLast: boolean
 }
 
-function Card({ fixture }: CardProps) {
+function Card({ fixture, isLast }: CardProps) {
   const navigation = useNavigation()
 
   const navigateToGame = () => {
@@ -112,113 +160,148 @@ function Card({ fixture }: CardProps) {
   const [homeGoals, awayGoals] =
     fixture.result?.split('-').map((i) => parseInt(i)) ?? []
 
+  const lfcGoals = fixture.isAwayGame ? awayGoals : homeGoals
+  const oppoGoals = fixture.isAwayGame ? homeGoals : awayGoals
+
+  const outcome: Outcome =
+    fixture.result == null
+      ? 'upcoming'
+      : (lfcGoals ?? 0) > (oppoGoals ?? 0)
+        ? 'win'
+        : (lfcGoals ?? 0) < (oppoGoals ?? 0)
+          ? 'loss'
+          : 'draw'
+
   return (
     <Pressable
-      style={styles.card}
+      style={styles.row}
       onPress={navigateToGame}
       onPressIn={prefetchGame}
     >
-      <View style={{ flex: 1 }}>
-        <View
-          style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            gap: 12,
-            marginBottom: 8,
-          }}
-        >
-          <Text variant="captionLarge" color="baseMuted">
+      <View style={styles.rowInner}>
+        <View style={styles.meta}>
+          <Text variant="captionMedium" color="baseMuted">
             <RelativeTime date={fixture.startsAt} />
           </Text>
-          <Text variant="captionLarge" color="baseMuted">
-            {fixture.type} {fixture.playOffType && `(${fixture.playOffType})`}
-          </Text>
-        </View>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 12,
-            flex: 1,
-          }}
-        >
           <Text
-            variant="bodySmall"
-            style={{
-              fontVariant: ['tabular-nums'],
-            }}
+            variant="captionSmall"
             color="baseMuted"
             numberOfLines={1}
+            style={styles.competition}
           >
-            {!fixture.result ? fixture.startsAtTime : 'FT'}
+            {fixture.type}
+            {fixture.playOffType ? ` (${fixture.playOffType})` : ''}
           </Text>
-          <View style={{ gap: 4 }}>
-            <TeamRow
-              name={!fixture.isAwayGame ? 'Liverpool' : fixture.oppoonent}
-              logoUrl={
-                !fixture.isAwayGame ? lfcLogoUrl : fixture.opponentLogoUrl
-              }
-              goals={homeGoals}
-              winner={(homeGoals ?? 0) > (awayGoals ?? 0)}
-            />
-            <TeamRow
-              name={fixture.isAwayGame ? 'Liverpool' : fixture.oppoonent}
-              logoUrl={
-                fixture.isAwayGame ? lfcLogoUrl : fixture.opponentLogoUrl
-              }
-              goals={awayGoals}
-              winner={(awayGoals ?? 0) > (homeGoals ?? 0)}
-            />
-          </View>
+        </View>
+
+        <View style={styles.match}>
+          <TeamSide
+            name={fixture.isAwayGame ? fixture.oppoonent : 'Liverpool'}
+            logoUrl={fixture.isAwayGame ? fixture.opponentLogoUrl : lfcLogoUrl}
+            align="home"
+          />
+
+          <ScorePill
+            outcome={outcome}
+            label={
+              fixture.result
+                ? `${homeGoals} - ${awayGoals}`
+                : (fixture.startsAtTime ?? '')
+            }
+          />
+
+          <TeamSide
+            name={fixture.isAwayGame ? 'Liverpool' : fixture.oppoonent}
+            logoUrl={fixture.isAwayGame ? lfcLogoUrl : fixture.opponentLogoUrl}
+            align="away"
+          />
         </View>
       </View>
+      {!isLast && <RowSeparator />}
     </Pressable>
   )
 }
 
-interface TeamRowProps {
+interface TeamSideProps {
   name: string
   logoUrl: string
-  goals: number | null | undefined
-  winner: boolean
+  align: 'home' | 'away'
 }
 
-function TeamRow({ name, logoUrl, goals, winner }: TeamRowProps) {
+function TeamSide({ name, logoUrl, align }: TeamSideProps) {
+  const logo = (
+    <View style={styles.logo}>
+      <Image source={logoUrl} style={styles.image} contentFit="contain" />
+    </View>
+  )
+
+  return (
+    <View
+      style={[
+        styles.team,
+        { justifyContent: align === 'home' ? 'flex-end' : 'flex-start' },
+      ]}
+    >
+      {align === 'home' ? (
+        <>
+          <Text
+            variant="bodySmall"
+            style={[styles.teamName, { textAlign: 'right' }]}
+            numberOfLines={1}
+          >
+            {name}
+          </Text>
+          {logo}
+        </>
+      ) : (
+        <>
+          {logo}
+          <Text variant="bodySmall" style={styles.teamName} numberOfLines={1}>
+            {name}
+          </Text>
+        </>
+      )}
+    </View>
+  )
+}
+
+function pillColors(theme: Theme, outcome: Outcome) {
+  switch (outcome) {
+    case 'win':
+      return { backgroundColor: colors.green600, color: colors.white }
+    case 'loss':
+      return { backgroundColor: colors.red600, color: colors.white }
+    default:
+      return {
+        backgroundColor: theme.backgroundBase,
+        borderColor: theme.borderBaseMuted,
+        borderWidth: StyleSheet.hairlineWidth,
+        color: theme.foregroundBase,
+      }
+  }
+}
+
+function ScorePill({ outcome, label }: { outcome: Outcome; label: string }) {
+  const theme = useTheme()
+  const { color, ...container } = pillColors(theme, outcome)
+
+  return (
+    <View style={[styles.pill, container]}>
+      <Text style={[styles.pillText, { color }]}>{label}</Text>
+    </View>
+  )
+}
+
+function RowSeparator() {
+  const theme = useTheme()
+
   return (
     <View
       style={{
-        flex: 1,
-        gap: 4,
-        flexDirection: 'row',
-        alignItems: 'center',
+        height: StyleSheet.hairlineWidth,
+        backgroundColor: theme.borderBaseMuted,
       }}
-    >
-      {goals != null && (
-        <Text
-          variant="bodySmall"
-          style={[
-            {
-              width: 14,
-              fontWeight: winner ? 600 : 400,
-              textAlign: 'center',
-              fontVariant: ['tabular-nums'],
-            },
-          ]}
-        >
-          {goals}
-        </Text>
-      )}
-      <View style={{ width: 20, alignItems: 'center' }}>
-        <Image source={logoUrl} style={styles.image} contentFit="contain" />
-      </View>
-      <Text
-        variant="bodySmall"
-        style={[{ fontWeight: winner ? 600 : 400 }]}
-        numberOfLines={1}
-      >
-        {name}
-      </Text>
-    </View>
+    />
   )
 }
 
@@ -259,41 +342,67 @@ function RelativeTime({ date }: RelativeTimeProps) {
   return capitalizeFirstLetter(useRelativeTimeFormatter(date))
 }
 
-// Index of the most recent fixture before today, so the list opens there.
-function findLastFixture(data: FixtureSlim[]): FixtureSlim | null {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  let start = 0
-  let end = data.length - 1
-
-  if (data.length === 0 || data[0]!.startsAt >= today) return null
-
-  while (start < end) {
-    const mid = Math.ceil((start + end) / 2)
-
-    if (data[mid]!.startsAt < today) {
-      start = mid
-    } else {
-      end = mid - 1
-    }
-  }
-
-  return data[start]!.startsAt < today ? data[start]! : null
-}
-
-const ROW_HEIGHT = 100
+const ROW_HEIGHT = 76
+const SCREEN_PADDING = 17
 
 const styles = StyleSheet.create({
-  card: {
-    paddingVertical: 17,
+  row: {
+    paddingHorizontal: SCREEN_PADDING,
+  },
+  rowInner: {
+    paddingVertical: 14,
+  },
+  header: {
+    paddingHorizontal: SCREEN_PADDING,
+    paddingTop: 24,
+    paddingBottom: 8,
+  },
+  meta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 10,
+  },
+  competition: {
+    flexShrink: 1,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  match: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  team: {
     flex: 1,
     flexDirection: 'row',
-    gap: 12,
-    height: ROW_HEIGHT,
+    alignItems: 'center',
+    gap: 4,
+  },
+  teamName: {
+    flexShrink: 1,
+    fontWeight: 400,
+  },
+  logo: {
+    width: 22,
+    alignItems: 'center',
   },
   image: {
-    height: 17,
-    width: 17,
+    height: 22,
+    width: 22,
+  },
+  pill: {
+    minWidth: 44,
+    paddingHorizontal: 2,
+    paddingVertical: 2,
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pillText: {
+    fontSize: 13,
+    lineHeight: 20,
+    fontWeight: 600,
+    fontVariant: ['tabular-nums'],
   },
 })
