@@ -12,6 +12,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import type { ColorSchemeName } from 'react-native'
 import { FixturesScreen } from './screens/fixtures'
 import { FixturesGameScreen } from './screens/fixtures-game'
+import { InfoScreen } from './screens/info'
 import { NewsfeedScreen } from './screens/newsfeed'
 import {
   NewsfeedPostScreen,
@@ -38,6 +39,22 @@ const NewsfeedNavigator = createNativeStackNavigator({
       options: {
         title: '',
         headerRight: () => <NewsfeedPostShareButton />,
+      },
+    },
+  },
+})
+
+const InfoNavigator = createNativeStackNavigator({
+  initialRouteName: 'Feed',
+  screenOptions: {
+    headerShadowVisible: false,
+    headerTransparent: true,
+  },
+  screens: {
+    Feed: {
+      screen: InfoScreen,
+      options: {
+        title: 'Info',
       },
     },
   },
@@ -92,6 +109,16 @@ const HomeTabs = createNativeBottomTabNavigator({
         tabBarIcon: ({ focused }) => ({
           type: 'sfSymbol',
           name: focused ? 'sportscourt.fill' : 'sportscourt',
+        }),
+      },
+    },
+    Info: {
+      screen: InfoNavigator,
+      options: {
+        title: 'Info',
+        tabBarIcon: ({ focused }) => ({
+          type: 'sfSymbol',
+          name: focused ? 'info.circle.fill' : 'info.circle',
         }),
       },
     },
