@@ -13,6 +13,7 @@ import type { ColorSchemeName } from 'react-native'
 import { FixturesScreen } from './screens/fixtures'
 import { FixturesGameScreen } from './screens/fixtures-game'
 import { InfoScreen } from './screens/info'
+import { LoginScreen } from './screens/login'
 import { NewsfeedScreen } from './screens/newsfeed'
 import {
   NewsfeedPostScreen,
@@ -132,6 +133,15 @@ const RootStack = createNativeStackNavigator({
       screen: HomeTabs,
       options: {
         headerShown: false,
+      },
+    },
+    Login: {
+      screen: LoginScreen,
+      options: {
+        presentation: 'modal',
+        title: '',
+        headerShadowVisible: false,
+        headerTransparent: true,
       },
     },
   },

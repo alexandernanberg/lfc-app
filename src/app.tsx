@@ -4,6 +4,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { registerRootComponent } from 'expo'
 import { useColorScheme } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { AuthProvider } from '~/components/auth-context'
 import { ThemeProvider } from '~/components/theme-context'
 import { fixturesQuery, postsQuery } from '~/lib/queries'
 import { queryClient } from '~/lib/query-client'
@@ -20,7 +21,9 @@ function App() {
     <ThemeProvider>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
-          <Navigation theme={navigationTheme} />
+          <AuthProvider>
+            <Navigation theme={navigationTheme} />
+          </AuthProvider>
         </QueryClientProvider>
       </SafeAreaProvider>
     </ThemeProvider>

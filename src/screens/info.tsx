@@ -1,9 +1,18 @@
+import { useNavigation } from '@react-navigation/native'
 import Constants from 'expo-constants'
 import { Image } from 'expo-image'
 import * as Sharing from 'expo-sharing'
-import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import {
+  Alert,
+  Linking,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native'
 import SFSymbol from 'sf-symbols'
 import type { SFSymbol as SFSymbolName } from 'sf-symbols-typescript'
+import { useAuth } from '~/components/auth-context'
 import { Separator } from '~/components/separator'
 import { Text } from '~/components/text'
 import { useTheme } from '~/components/theme-context'
@@ -15,7 +24,20 @@ const appIcon = require('../../assets/icon.png') as number
 
 export function InfoScreen() {
   const theme = useTheme()
+  const navigation = useNavigation()
+  const { status, session, signOut } = useAuth()
   const version = Constants.expoConfig?.version ?? '1.0.0'
+
+  const handleSignOut = () => {
+    Alert.alert('Logga ut', 'Vill du logga ut?', [
+      { text: 'Avbryt', style: 'cancel' },
+      {
+        text: 'Logga ut',
+        style: 'destructive',
+        onPress: () => void signOut(),
+      },
+    ])
+  }
 
   return (
     <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ flex: 1 }}>
@@ -35,6 +57,31 @@ export function InfoScreen() {
           Version {version}
         </Text>
       </View>
+
+      {status !== 'loading' ? (
+        <View
+          style={[
+            styles.section,
+            styles.accountSection,
+            { borderColor: theme.borderBaseMuted },
+          ]}
+        >
+          {session ? (
+            <Row
+              icon="person.crop.circle"
+              label={`Inloggad som ${session.username}`}
+              onPress={handleSignOut}
+              actionLabel="Logga ut"
+            />
+          ) : (
+            <Row
+              icon="person.crop.circle"
+              label="Logga in"
+              onPress={() => navigation.navigate('Login')}
+            />
+          )}
+        </View>
+      ) : null}
 
       <View style={[styles.section, { borderColor: theme.borderBaseMuted }]}>
         <Row
@@ -70,9 +117,10 @@ interface RowProps {
   icon: SFSymbolName
   label: string
   onPress: () => void
+  actionLabel?: string
 }
 
-function Row({ icon, label, onPress }: RowProps) {
+function Row({ icon, label, onPress, actionLabel }: RowProps) {
   const theme = useTheme()
 
   return (
@@ -93,13 +141,19 @@ function Row({ icon, label, onPress }: RowProps) {
       <Text variant="bodyMedium" style={{ flex: 1 }}>
         {label}
       </Text>
-      <SFSymbol
-        name="chevron.right"
-        weight="semibold"
-        scale="small"
-        colors={[theme.foregroundBaseMuted]}
-        size={14}
-      />
+      {actionLabel ? (
+        <Text variant="bodyMedium" style={{ color: theme.foregroundAction }}>
+          {actionLabel}
+        </Text>
+      ) : (
+        <SFSymbol
+          name="chevron.right"
+          weight="semibold"
+          scale="small"
+          colors={[theme.foregroundBaseMuted]}
+          size={14}
+        />
+      )}
     </Pressable>
   )
 }
@@ -121,6 +175,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
+  },
+  accountSection: {
+    marginBottom: 16,
   },
   row: {
     flexDirection: 'row',
