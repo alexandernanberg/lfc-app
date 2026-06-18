@@ -19,6 +19,7 @@ import {
   NewsfeedPostScreen,
   NewsfeedPostShareButton,
 } from './screens/newsfeed-post'
+import { StandingScreen } from './screens/standing'
 import { alphaColor, themes } from './theme'
 
 const NewsfeedNavigator = createNativeStackNavigator({
@@ -84,6 +85,23 @@ const FixturesNavigator = createNativeStackNavigator({
   },
 })
 
+const StandingNavigator = createNativeStackNavigator({
+  initialRouteName: 'Feed',
+  screenOptions: {
+    headerShadowVisible: false,
+    headerTransparent: true,
+  },
+  screens: {
+    Feed: {
+      screen: StandingScreen,
+      options: {
+        title: 'Tabell',
+        headerTitle: '',
+      },
+    },
+  },
+})
+
 const HomeTabs = createNativeBottomTabNavigator({
   screenOptions: ({ theme }) => {
     return {
@@ -110,6 +128,16 @@ const HomeTabs = createNativeBottomTabNavigator({
         tabBarIcon: ({ focused }) => ({
           type: 'sfSymbol',
           name: focused ? 'sportscourt.fill' : 'sportscourt',
+        }),
+      },
+    },
+    Standing: {
+      screen: StandingNavigator,
+      options: {
+        title: 'Tabell',
+        tabBarIcon: ({ focused }) => ({
+          type: 'sfSymbol',
+          name: focused ? 'tablecells.fill' : 'tablecells',
         }),
       },
     },
