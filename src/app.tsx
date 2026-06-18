@@ -2,6 +2,7 @@ import 'react-native-gesture-handler'
 import 'react-native-url-polyfill/auto'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { registerRootComponent } from 'expo'
+import { Suspense } from 'react'
 import { useColorScheme } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { AuthProvider } from '~/components/auth-context'
@@ -21,9 +22,11 @@ function App() {
     <ThemeProvider>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <Navigation theme={navigationTheme} />
-          </AuthProvider>
+          <Suspense fallback={null}>
+            <AuthProvider>
+              <Navigation theme={navigationTheme} />
+            </AuthProvider>
+          </Suspense>
         </QueryClientProvider>
       </SafeAreaProvider>
     </ThemeProvider>

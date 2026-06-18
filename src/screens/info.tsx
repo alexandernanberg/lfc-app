@@ -25,7 +25,7 @@ const appIcon = require('../../assets/icon.png') as number
 export function InfoScreen() {
   const theme = useTheme()
   const navigation = useNavigation()
-  const { status, session, signOut } = useAuth()
+  const { session, signOut } = useAuth()
   const version = Constants.expoConfig?.version ?? '1.0.0'
 
   const handleSignOut = () => {
@@ -58,30 +58,28 @@ export function InfoScreen() {
         </Text>
       </View>
 
-      {status !== 'loading' ? (
-        <View
-          style={[
-            styles.section,
-            styles.accountSection,
-            { borderColor: theme.borderBaseMuted },
-          ]}
-        >
-          {session ? (
-            <Row
-              icon="person.crop.circle"
-              label={`Inloggad som ${session.username}`}
-              onPress={handleSignOut}
-              actionLabel="Logga ut"
-            />
-          ) : (
-            <Row
-              icon="person.crop.circle"
-              label="Logga in"
-              onPress={() => navigation.navigate('Login')}
-            />
-          )}
-        </View>
-      ) : null}
+      <View
+        style={[
+          styles.section,
+          styles.accountSection,
+          { borderColor: theme.borderBaseMuted },
+        ]}
+      >
+        {session ? (
+          <Row
+            icon="person.crop.circle"
+            label={`Inloggad som ${session.username}`}
+            onPress={handleSignOut}
+            actionLabel="Logga ut"
+          />
+        ) : (
+          <Row
+            icon="person.crop.circle"
+            label="Logga in"
+            onPress={() => navigation.navigate('Login')}
+          />
+        )}
+      </View>
 
       <View style={[styles.section, { borderColor: theme.borderBaseMuted }]}>
         <Row

@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
 import {
   createContext,
+  use,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useState,
 } from 'react'
@@ -12,10 +12,18 @@ import { login, logout, setSessionToken } from '~/api'
 import { queryClient } from '~/lib/query-client'
 import { clearSession, loadSession, saveSession } from '~/lib/session-store'
 
-type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated'
+// Restore the persisted session once, at module load. Setting the api token
+// here (rather than in an effect) guarantees it's in place before any
+// authenticated request fires from a child. The promise is consumed with
+// `use()`, so the provider suspends until the session has been restored.
+const sessionRestore = loadSession().then((restored) => {
+  if (restored) {
+    setSessionToken(restored.token)
+  }
+  return restored
+})
 
 interface AuthContextValue {
-  status: AuthStatus
   session: Session | null
   signIn: (username: string, password: string) => Promise<void>
   signOut: () => Promise<void>
@@ -28,37 +36,13 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [session, setSession] = useState<Session | null>(null)
-  const [status, setStatus] = useState<AuthStatus>('loading')
-
-  // Restore a persisted session on startup.
-  useEffect(() => {
-    let active = true
-
-    void loadSession().then((restored) => {
-      if (!active) {
-        return
-      }
-      if (restored) {
-        setSessionToken(restored.token)
-        setSession(restored)
-        setStatus('authenticated')
-      } else {
-        setStatus('unauthenticated')
-      }
-    })
-
-    return () => {
-      active = false
-    }
-  }, [])
+  const [session, setSession] = useState<Session | null>(use(sessionRestore))
 
   const signIn = useCallback(async (username: string, password: string) => {
     const nextSession = await login(username, password)
     setSessionToken(nextSession.token)
     await saveSession(nextSession)
     setSession(nextSession)
-    setStatus('authenticated')
     // Refetch so permission-gated data (e.g. comments) reflects the new user.
     await queryClient.invalidateQueries()
   }, [])
@@ -68,13 +52,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setSessionToken(null)
     await clearSession()
     setSession(null)
-    setStatus('unauthenticated')
     await queryClient.invalidateQueries()
   }, [])
 
   const value = useMemo<AuthContextValue>(
-    () => ({ status, session, signIn, signOut }),
-    [status, session, signIn, signOut],
+    () => ({ session, signIn, signOut }),
+    [session, signIn, signOut],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
