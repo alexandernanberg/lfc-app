@@ -4,6 +4,7 @@ import {
   getFixture,
   getFixtureEvents,
   getFixtureStats,
+  getMemberInformation,
   getPost,
   listFixtures,
   listPosts,
@@ -71,11 +72,21 @@ const fixtureEventsQuery = (id: string) => {
   })
 }
 
+function memberQuery(token: string | undefined) {
+  return queryOptions({
+    queryKey: ['member', token],
+    queryFn: () => getMemberInformation(),
+    enabled: token != null,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
 export {
   fixtureEventsQuery,
   fixtureQuery,
   fixturesQuery,
   fixtureStatsQuery,
+  memberQuery,
   postCommentsQuery,
   postQuery,
   postsQuery,

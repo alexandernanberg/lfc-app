@@ -13,11 +13,11 @@ const API_URL = config.get('apiUrl')
 // Request layer
 ///////////////////////////////////////////////////////////
 
-// The provider authenticates requests with a session token. On login it
-// returns a `SessionId` in the body, which we then send back on subsequent
-// requests via the `x-session` header. We also opt into the native cookie
-// jar (`credentials: 'include'`) in case the server additionally relies on a
-// session cookie.
+// The provider authenticates requests with the `lfc-se` session cookie. On
+// login it returns a `SessionId` in the body (the same value that gets set as
+// that cookie), which we persist and replay as `Cookie: lfc-se=<token>` on
+// each request. We keep `credentials: 'include'` as well so the native cookie
+// jar stays in sync.
 let sessionToken: string | null = null
 
 /**
@@ -45,7 +45,7 @@ async function request(path: string, options: RequestOptions = {}) {
     headers['Content-Type'] = 'application/json'
   }
   if (sessionToken) {
-    headers['x-session'] = sessionToken
+    headers['Cookie'] = `lfc-se=${sessionToken}`
   }
 
   const res = await fetch(url.toString(), {
@@ -182,6 +182,12 @@ export async function logout(): Promise<void> {
   } catch {
     // ignore
   }
+}
+
+export async function getMemberInformation(): Promise<Member> {
+  const data = await request('/Member/GetMemberInformation')
+
+  return parseMember(data)
 }
 
 ///////////////////////////////////////////////////////////
@@ -484,6 +490,36 @@ function parseSession(input: unknown): Session {
   }
 }
 
+function parseMember(input: unknown): Member {
+  if (!isObject(input)) {
+    throw new Error('Invalid member')
+  }
+
+  const expirationDate = input.ExpirationDate
+    ? new Date(input.ExpirationDate)
+    : null
+
+  return {
+    id: `${input.MemberId}`,
+    membershipNumber: input.MembershipNumber,
+    firstName: input.FirstName,
+    lastName: input.LastName,
+    name: input.Name,
+    username: input.Username,
+    email: input.Email,
+    avatarUrl: input.ImageName?.includes('default-avatar')
+      ? null
+      : (input.ImageName ?? null),
+    signature: input.Signature || null,
+    expirationDate:
+      expirationDate && !Number.isNaN(expirationDate.getTime())
+        ? expirationDate
+        : null,
+    daysLeft: input.DaysLeft ?? 0,
+    numberOfComments: input.NumberOfComments ?? 0,
+  }
+}
+
 interface Tag {
   id: number
   value: string
@@ -532,6 +568,21 @@ export interface Session {
   username: string
   validThru: Date | null
   domain: string | null
+}
+
+export interface Member {
+  id: string
+  membershipNumber: number
+  firstName: string
+  lastName: string
+  name: string
+  username: string
+  email: string
+  avatarUrl: string | null
+  signature: string | null
+  expirationDate: Date | null
+  daysLeft: number
+  numberOfComments: number
 }
 
 export interface FixtureSlim {
