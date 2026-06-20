@@ -4,10 +4,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
+import CookieManager from '@react-native-cookies/cookies'
 import { config } from '~/config'
 import { titleCase } from './utils'
 
 const API_URL = config.get('apiUrl')
+const COOKIE_ORIGIN = new URL(API_URL).origin
 
 ///////////////////////////////////////////////////////////
 // Request layer
@@ -15,17 +17,51 @@ const API_URL = config.get('apiUrl')
 
 // The provider authenticates requests with the `lfc-se` session cookie. On
 // login it returns a `SessionId` in the body (the same value that gets set as
-// that cookie), which we persist and replay as `Cookie: lfc-se=<token>` on
-// each request. We keep `credentials: 'include'` as well so the native cookie
-// jar stays in sync.
-let sessionToken: string | null = null
+// that cookie). We write that into the *native* cookie store rather than a
+// hand-set `Cookie` header: on iOS the networking layer manages cookies through
+// its own store and silently drops a manually-set `Cookie` header, so the
+// session never goes out. With the cookie in the store, `credentials: 'include'`
+// sends it on every request.
 
 /**
- * Set (or clear) the session token used to authenticate API requests. The auth
+ * Set (or clear) the session cookie used to authenticate API requests. The auth
  * layer is the source of truth and keeps this in sync with persisted storage.
  */
-export function setSessionToken(token: string | null) {
-  sessionToken = token
+export async function setSessionToken(token: string | null) {
+  if (token) {
+    await CookieManager.set(COOKIE_ORIGIN, {
+      name: 'lfc-se',
+      value: token,
+      path: '/',
+    })
+  } else {
+    await CookieManager.clearAll()
+  }
+}
+
+// Invoked whenever a request comes back 401, so the auth layer can drop an
+// expired session. Registered by the auth store; see `setUnauthorizedHandler`.
+let onUnauthorized: (() => void) | null = null
+
+/**
+ * Register a handler called whenever the API returns 401 (session expired or
+ * revoked server-side). Centralising it here means every authenticated endpoint
+ * logs the user out, not just the few a component happens to watch.
+ */
+export function setUnauthorizedHandler(handler: (() => void) | null) {
+  onUnauthorized = handler
+}
+
+/** Thrown when the API responds with a non-2xx status. Carries the status so
+ * callers can distinguish auth failures (401) from other errors. */
+export class RequestError extends Error {
+  status: number
+
+  constructor(path: string, status: number) {
+    super(`Request to ${path} failed with status ${status}`)
+    this.name = 'RequestError'
+    this.status = status
+  }
 }
 
 interface RequestOptions {
@@ -44,19 +80,21 @@ async function request(path: string, options: RequestOptions = {}) {
   if (options.body !== undefined) {
     headers['Content-Type'] = 'application/json'
   }
-  if (sessionToken) {
-    headers['Cookie'] = `lfc-se=${sessionToken}`
-  }
 
   const res = await fetch(url.toString(), {
     method: options.method ?? 'GET',
     headers,
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    // The `lfc-se` session cookie lives in the native cookie store (see
+    // `setSessionToken`); `include` makes the native layer attach it.
     credentials: 'include',
   })
 
   if (!res.ok) {
-    throw new Error(`Request to ${path} failed with status ${res.status}`)
+    if (res.status === 401) {
+      onUnauthorized?.()
+    }
+    throw new RequestError(path, res.status)
   }
 
   return res.json()
@@ -85,6 +123,24 @@ export async function getComments(id: string) {
   })) as Array<unknown>
 
   return data.map((item) => parseComment(item))
+}
+
+export async function likeComment(input: {
+  newsId: string
+  commentId: string
+  hasLiked: boolean
+}) {
+  // The endpoint toggles based on the comment's *current* like state: send the
+  // current `HasLiked` and the server flips it (false -> liked, true -> unliked).
+  // The liker is derived from the session cookie.
+  return request('/Comment/LikeComment', {
+    method: 'POST',
+    body: {
+      NewsId: Number(input.newsId),
+      CommentId: Number(input.commentId),
+      HasLiked: input.hasLiked,
+    },
+  })
 }
 
 export async function listSeasons() {
@@ -313,6 +369,7 @@ function parseComment(input: unknown): Comment {
       url: input.Url,
     },
     numberOfLikes: input.NumberOfLikes,
+    hasLiked: Boolean(input.HasLiked),
     replies: input.SubList?.map((i: unknown) => parseComment(i)) ?? [],
   }
 }
@@ -587,6 +644,7 @@ export interface Comment {
   author: User
   comment: string
   numberOfLikes: number
+  hasLiked: boolean
   replies: Array<Comment>
 }
 

@@ -1,7 +1,7 @@
 import IframeRenderer, { iframeModel } from '@native-html/iframe-plugin'
 import type { StaticScreenProps } from '@react-navigation/native'
 import { useNavigation } from '@react-navigation/native'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { Image } from 'expo-image'
 import * as Sharing from 'expo-sharing'
 import type { ReactNode } from 'react'
@@ -24,11 +24,14 @@ import { defaultHTMLElementModels, RenderHTML } from 'react-native-render-html'
 import WebView from 'react-native-webview'
 import SFSymbol from 'sf-symbols'
 import type { Comment } from '~/api'
+import { likeComment } from '~/api'
+import { useAuth } from '~/components/auth-context'
 import { InstagramEmbed } from '~/components/instagram-embed'
 import { Separator } from '~/components/separator'
 import { Text } from '~/components/text'
 import { useTheme } from '~/components/theme-context'
 import { TweetEmbed } from '~/components/twitter-embed'
+import { queryClient } from '~/lib/query-client'
 import { postCommentsQuery, postQuery } from '~/lib/queries'
 import { DistanceTime } from '~/lib/use-relative-time-formatter'
 import { textStyles } from '~/theme'
@@ -223,12 +226,67 @@ const customHTMLElementModels = {
   'instagram-embed': defaultHTMLElementModels.div,
 } satisfies HTMLElementModelRecord
 
+// Recursively flip a comment's like state within the (nested) comment tree,
+// adjusting the like count to match. Used for optimistic updates.
+function toggleLike(comments: Array<Comment>, commentId: string): Array<Comment> {
+  return comments.map((comment) => {
+    if (comment.id === commentId) {
+      return {
+        ...comment,
+        hasLiked: !comment.hasLiked,
+        numberOfLikes: comment.numberOfLikes + (comment.hasLiked ? -1 : 1),
+      }
+    }
+    if (comment.replies.length) {
+      return { ...comment, replies: toggleLike(comment.replies, commentId) }
+    }
+    return comment
+  })
+}
+
+function useLikeComment(postId: string) {
+  const { session } = useAuth()
+  const { queryKey } = postCommentsQuery(postId)
+
+  return useMutation({
+    mutationFn: (comment: Comment) => {
+      if (!session) {
+        throw new Error('Not authenticated')
+      }
+      return likeComment({
+        newsId: postId,
+        commentId: comment.id,
+        hasLiked: comment.hasLiked,
+      })
+    },
+    onMutate: async (comment) => {
+      await queryClient.cancelQueries({ queryKey })
+      const previous = queryClient.getQueryData<Array<Comment>>(queryKey)
+      queryClient.setQueryData<Array<Comment>>(queryKey, (old) =>
+        old ? toggleLike(old, comment.id) : old,
+      )
+      return { previous }
+    },
+    onError: (_error, _comment, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKey, context.previous)
+      }
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey })
+    },
+  })
+}
+
 interface CommentsProps {
   postId: string
 }
 
 function Comments({ postId }: CommentsProps) {
   const { data: comments } = useSuspenseQuery(postCommentsQuery(postId))
+  const { session } = useAuth()
+  const { mutate: like } = useLikeComment(postId)
+  const onToggleLike = session ? like : undefined
 
   return (
     <View
@@ -240,11 +298,15 @@ function Comments({ postId }: CommentsProps) {
       }}
     >
       {comments.map((comment) => (
-        <Comment key={comment.id} comment={comment}>
+        <Comment key={comment.id} comment={comment} onToggleLike={onToggleLike}>
           {!!comment.replies.length && (
             <View style={{ paddingLeft: 40, paddingTop: 12, gap: 12 }}>
               {comment.replies.map((reply) => (
-                <Comment key={reply.id} comment={reply} />
+                <Comment
+                  key={reply.id}
+                  comment={reply}
+                  onToggleLike={onToggleLike}
+                />
               ))}
             </View>
           )}
@@ -256,10 +318,11 @@ function Comments({ postId }: CommentsProps) {
 
 interface CommentProps {
   comment: Comment
+  onToggleLike?: (comment: Comment) => void
   children?: ReactNode
 }
 
-function Comment({ comment, children }: CommentProps) {
+function Comment({ comment, onToggleLike, children }: CommentProps) {
   const theme = useTheme()
 
   return (
@@ -347,23 +410,29 @@ function Comment({ comment, children }: CommentProps) {
               </Text>
             </Pressable>
             <Pressable
+              disabled={!onToggleLike}
+              onPress={() => onToggleLike?.(comment)}
               style={{ alignItems: 'center', flexDirection: 'row', gap: 4 }}
             >
               <SFSymbol
-                name="hand.thumbsup"
+                name={comment.hasLiked ? 'hand.thumbsup.fill' : 'hand.thumbsup'}
                 weight="regular"
                 scale="small"
-                colors={[theme.foregroundBaseMuted]}
+                colors={[
+                  comment.hasLiked
+                    ? theme.foregroundAction
+                    : theme.foregroundBaseMuted,
+                ]}
                 size={13}
               />
               <Text
                 variant="captionLarge"
-                color="baseMuted"
+                color={comment.hasLiked ? 'action' : 'baseMuted'}
                 style={{
                   fontWeight: 500,
                 }}
               >
-                Gilla{' '}
+                {comment.hasLiked ? 'Gillar' : 'Gilla'}{' '}
                 <Text style={{ fontWeight: 400, color: undefined }}>
                   ({comment.numberOfLikes})
                 </Text>

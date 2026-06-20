@@ -9,6 +9,7 @@ import {
   listFixtures,
   listPosts,
   listStanding,
+  RequestError,
 } from '~/api'
 import { queryClient } from './query-client'
 
@@ -79,6 +80,10 @@ function memberQuery(token: string | undefined) {
     queryFn: () => getMemberInformation(),
     enabled: token != null,
     staleTime: 5 * 60 * 1000,
+    // Don't retry an expired session — surface the 401 immediately so the auth
+    // layer can clear it.
+    retry: (count, error) =>
+      error instanceof RequestError && error.status === 401 ? false : count < 3,
   })
 }
 
