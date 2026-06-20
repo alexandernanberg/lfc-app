@@ -38,11 +38,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       'expo-splash-screen',
       {
-        image: './assets/splash.png',
+        image: './assets/splash-icon.png',
+        imageWidth: 220,
         resizeMode: 'contain',
         backgroundColor: '#ffffff',
         dark: {
-          image: './assets/splash.png',
+          image: './assets/splash-icon.png',
+          imageWidth: 220,
           resizeMode: 'contain',
           backgroundColor: '#000000',
         },
