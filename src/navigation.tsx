@@ -55,7 +55,7 @@ const InfoNavigator = createNativeStackNavigator({
     Feed: {
       screen: InfoScreen,
       options: {
-        title: 'Info',
+        title: 'Mer',
       },
     },
   },
@@ -116,10 +116,10 @@ const HomeTabs = createNativeBottomTabNavigator({
     Info: {
       screen: InfoNavigator,
       options: {
-        title: 'Info',
+        title: 'Mer',
         tabBarIcon: ({ focused }) => ({
           type: 'sfSymbol',
-          name: focused ? 'info.circle.fill' : 'info.circle',
+          name: focused ? 'ellipsis.circle.fill' : 'ellipsis.circle',
         }),
       },
     },
