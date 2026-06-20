@@ -10,6 +10,136 @@ import { titleCase } from './utils'
 const API_URL = config.get('apiUrl')
 
 ///////////////////////////////////////////////////////////
+// API Response Types (what the server returns)
+///////////////////////////////////////////////////////////
+
+interface ApiTag {
+  TagId: number
+  TagName: string
+}
+
+interface ApiAdmin {
+  AdminId: string
+  AdminName: string
+  ImageName: string
+  Url: string
+}
+
+interface ApiPost {
+  NewsId: number
+  Title: string
+  Preamble: string
+  ImageName: string
+  CreatedDate: string
+  NumberOfComments: number
+  NumberOfLikes: number
+  Url: string
+  ContentText: string
+  TagList: ApiTag[] | null
+  Admin: ApiAdmin | null
+  IsLocked: boolean
+  HasLiked: boolean
+  IsCommentsDisabled: boolean
+}
+
+interface ApiComment {
+  CommentId: number
+  ParentId: string
+  CreatedDate: string
+  ChangedDate: string | null
+  Comment: string
+  MemberId: string
+  UserName: string
+  ImageName: string | null
+  Url: string
+  NumberOfLikes: number
+  SubList: ApiComment[] | null
+}
+
+interface ApiSeason {
+  SeasonId: string
+  Name: string
+}
+
+interface ApiFixtureSlim {
+  FixtureId: number
+  GameTime: string
+  GameDate: string
+  IsAwayGame: boolean
+  Opponent: string
+  GameType: string
+  ImageName: string
+  PlayOffType: string | null
+  ResultFinal: string | null
+  ResultHalfTime: string | null
+}
+
+interface ApiReferee {
+  RefereeId: number
+  Name: string
+  ImageName: string
+}
+
+interface ApiFixture {
+  FixtureId: number
+  GameTime: string
+  GameDate: string
+  IsAwayGame: boolean
+  Opponent: string
+  GameType: string
+  PlayOffType: string | null
+  ResultFinal: string | null
+  ResultHalfTime: string | null
+  Arena: string
+  Spectators: number
+  Name: string
+  ImageHome: string
+  ImageAway: string
+  Referee: ApiReferee | null
+}
+
+interface ApiTeamStats {
+  Shots: number
+  ShotsOnGoal: number
+  Possession: number
+  Passes: number
+  PassingPercentage: number
+  Misconduct: number
+  Yellow: number
+  Red: number
+  Offsides: number
+  Corners: number
+}
+
+interface ApiFixtureStats {
+  ItemList: [ApiTeamStats, ApiTeamStats]
+}
+
+interface ApiFixtureEvent {
+  FixtureEventId: string
+  EventTypeId: number
+  IsPenalty: boolean
+  Minute: number
+  Name: string
+  IsLiverpool: boolean
+}
+
+interface ApiStanding {
+  Position: string
+  Team: string
+  ImageName: string
+  Played: string
+  Won: string
+  Draw: string
+  Lost: string
+  Fore: string
+  Against: string
+  GoalDifference: string
+  Points: string
+  IsLiverpool: boolean
+}
+
+///////////////////////////////////////////////////////////
 // Request layer
 ///////////////////////////////////////////////////////////
 
@@ -34,7 +164,7 @@ interface RequestOptions {
   body?: unknown
 }
 
-async function request(path: string, options: RequestOptions = {}) {
+async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const url = new URL(`${API_URL}${path}`)
   for (const [key, value] of Object.entries(options.searchParams ?? {})) {
     url.searchParams.set(key, value)
@@ -59,73 +189,74 @@ async function request(path: string, options: RequestOptions = {}) {
     throw new Error(`Request to ${path} failed with status ${res.status}`)
   }
 
-  return res.json()
+  return res.json() as Promise<T>
 }
 
-export async function getPost(id: string) {
-  const data = await request('/News/GetNewsById', {
+///////////////////////////////////////////////////////////
+// API Functions
+///////////////////////////////////////////////////////////
+
+async function getPost(id: string) {
+  const data = await request<ApiPost>('/News/GetNewsById', {
     searchParams: { NewsId: id },
   })
-
   return parsePost(data)
 }
 
-export async function listPosts(limit = 10, offset = 0) {
+async function listPosts(limit = 10, offset = 0) {
   // REST API doesn't have limit and offset but only limit/items.
-  const data = (await request('/News/GetNewsList', {
+  const data = await request<ApiPost[]>('/News/GetNewsList', {
     searchParams: { items: (limit + offset).toString() },
-  })) as Array<unknown>
-
-  return data.slice(offset).map((item) => parsePost(item))
+  })
+  return data.slice(offset).map(parsePost)
 }
 
-export async function getComments(id: string) {
-  const data = (await request('/Comment/GetCommentList', {
-    searchParams: { NewsId: id },
-  })) as Array<unknown>
-
-  return data.map((item) => parseComment(item))
+async function listComments(postId: string) {
+  const data = await request<ApiComment[]>('/Comment/GetCommentList', {
+    searchParams: { NewsId: postId },
+  })
+  return data.map(parseComment)
 }
 
-export async function listSeasons() {
-  const data = (await request('/Fixture/GetSeasonList')) as Array<unknown>
-
-  return data.map((item) => parseSeason(item))
+async function listSeasons() {
+  const data = await request<ApiSeason[]>('/Fixture/GetSeasonList')
+  return data.map(parseSeason)
 }
 
-export async function listFixtures() {
+async function listFixtures() {
   const seasons = await listSeasons()
   const seasonId = seasons.at(0)?.id ?? '36'
 
-  const data = (await request('/Fixture/GetFixture', {
+  const data = await request<ApiFixtureSlim[]>('/Fixture/GetFixture', {
     searchParams: { seasonId },
-  })) as Array<unknown>
-
-  return data.map((item) => parseFixtureSlim(item))
+  })
+  return data.map(parseFixtureSlim)
 }
 
-export async function getFixture(id: string) {
-  const data = await request('/Fixture/GetFixtureById', {
+async function getFixture(id: string) {
+  const data = await request<ApiFixture>('/Fixture/GetFixtureById', {
     searchParams: { fixtureId: id },
   })
-
   return parseFixture(data)
 }
 
-export async function getFixtureStats(id: string) {
-  const data = await request('/Fixture/GetFixtureTeamStats', {
+async function getFixtureStats(id: string) {
+  const data = await request<ApiFixtureStats>('/Fixture/GetFixtureTeamStats', {
     searchParams: { fixtureId: id },
   })
-
   return parseFixtureStats(data)
 }
 
-export async function getFixtureEvents(id: string) {
-  const data = (await request('/Fixture/GetFixtureEvents', {
+async function getFixtureEvents(id: string) {
+  const data = await request<ApiFixtureEvent[]>('/Fixture/GetFixtureEvents', {
     searchParams: { fixtureId: id },
-  })) as Array<unknown>
+  })
+  return data.map(parseFixtureEvent)
+}
 
-  return data.map((item) => parseFixtureEvents(item))
+async function getStandings() {
+  const data = await request<ApiStanding[]>('/Standing/GetStanding')
+  return data.map(parseStanding)
 }
 
 ///////////////////////////////////////////////////////////
@@ -149,11 +280,8 @@ export class AuthError extends Error {
   }
 }
 
-export async function login(
-  username: string,
-  password: string,
-): Promise<Session> {
-  const data = await request('/Login', {
+async function login(username: string, password: string): Promise<Session> {
+  const data = await request<any>('/Login', {
     method: 'POST',
     body: { Username: username, Password: password },
   })
@@ -174,7 +302,7 @@ export async function login(
   return parseSession(data)
 }
 
-export async function logout(): Promise<void> {
+async function logout(): Promise<void> {
   // Best-effort: clear the server-side session. We always clear locally
   // regardless of the result, so swallow network/server errors here.
   try {
@@ -184,25 +312,24 @@ export async function logout(): Promise<void> {
   }
 }
 
-export async function getMemberInformation(): Promise<Member> {
-  const data = await request('/Member/GetMemberInformation')
-
+async function getMemberInformation(): Promise<Member> {
+  const data = await request<any>('/Member/GetMemberInformation')
   return parseMember(data)
 }
 
 ///////////////////////////////////////////////////////////
-// Normalizers
+// Helpers
 ///////////////////////////////////////////////////////////
 
 function isObject(input: unknown): input is any {
   return typeof input === 'object' && input !== null
 }
 
-function parsePost(input: unknown): Post {
-  if (!isObject(input)) {
-    throw new Error('Invalid post')
-  }
+///////////////////////////////////////////////////////////
+// Parsers / Transformers
+///////////////////////////////////////////////////////////
 
+function parsePost(input: ApiPost): Post {
   return {
     id: `${input.NewsId}`,
     title: input.Title,
@@ -210,20 +337,26 @@ function parsePost(input: unknown): Post {
     imageUrl: input.ImageName.replace(/w_\d*/, 'w_600'),
     publishedAt: new Date(input.CreatedDate),
     commentsCount: input.NumberOfComments ?? 0,
+    likesCount: input.NumberOfLikes ?? 0,
     slug: input.Url,
     url: `https://lfc.nu${input.Url ?? ''}`,
     content: preprocessPostHtml(input.ContentText ?? ''),
     tags:
-      input.TagList?.map((tag: any) => ({
+      input.TagList?.map((tag) => ({
         id: tag.TagId,
         value: tag.TagName,
       })) ?? [],
-    author: {
-      id: input.Admin?.AdminId,
-      name: input.Admin?.AdminName,
-      avatarUrl: input.Admin?.ImageName,
-      url: input.Admin?.Url,
-    },
+    author: input.Admin
+      ? {
+          id: input.Admin.AdminId,
+          name: input.Admin.AdminName,
+          avatarUrl: input.Admin.ImageName,
+          url: input.Admin.Url,
+        }
+      : null,
+    isLocked: input.IsLocked,
+    hasLiked: input.HasLiked,
+    isCommentsDisabled: input.IsCommentsDisabled,
   }
 }
 
@@ -248,7 +381,7 @@ function preprocessPostHtml(html: string) {
     )
     .replace(
       /<iframe[^>]*src="[^"]*?\/Tweet\.html[^"]*?id=(\d+)[^>]*><\/iframe>/gi,
-      (match, tweetId) => {
+      (_match, tweetId: string) => {
         return `<tweet-embed id="${tweetId}"></tweet-embed>`
       },
     )
@@ -256,12 +389,12 @@ function preprocessPostHtml(html: string) {
   // Instagram embeds
   sanitizedHtml = sanitizedHtml.replace(
     /<figure>[\s\S]*?<blockquote class="instagram-media"[^>]*data-instgrm-permalink="[^"]*\/p\/([^/?]+)[^"]*"[^>]*>[\s\S]*?<\/blockquote>[\s\S]*?<\/figure>/gi,
-    (match, postId) => {
+    (_match, postId: string) => {
       return `<instagram-embed id="${postId}"></instagram-embed>`
     },
   )
 
-  // Remove annying banners
+  // Remove annoying banners
   sanitizedHtml = sanitizedHtml
     .replace(/<hr>[\s\S]*?<figure>[\s\S]*?data-emoji="🚩"[\s\S]*/g, '')
     .replace(/<p>\*&nbsp;(.|\s)+<\/p>\s<figure.+<\/figure>/g, '')
@@ -282,11 +415,7 @@ function preprocessPostHtml(html: string) {
   return sanitizedHtml
 }
 
-function parseComment(input: unknown): Comment {
-  if (!isObject(input)) {
-    throw new Error('Invalid comment')
-  }
-
+function parseComment(input: ApiComment): Comment {
   return {
     id: `${input.CommentId}`,
     parentId: input.ParentId,
@@ -305,21 +434,24 @@ function parseComment(input: unknown): Comment {
       url: input.Url,
     },
     numberOfLikes: input.NumberOfLikes,
-    replies: input.SubList?.map((i: unknown) => parseComment(i)) ?? [],
+    replies: input.SubList?.map(parseComment) ?? [],
   }
 }
 
-function parseFixtureSlim(input: unknown): FixtureSlim {
-  if (!isObject(input)) {
-    throw new Error('Invalid fixture')
+function parseSeason(input: ApiSeason): Season {
+  return {
+    id: input.SeasonId,
+    name: input.Name,
   }
+}
 
+function parseFixtureSlim(input: ApiFixtureSlim): FixtureSlim {
   return {
     id: `${input.FixtureId}`,
     startsAt: new Date(`${input.GameDate}T${input.GameTime}`),
     startsAtTime: String(input.GameTime).trim(),
     isAwayGame: input.IsAwayGame,
-    oppoonent: input.Opponent,
+    opponent: input.Opponent,
     type: input.GameType,
     opponentLogoUrl: input.ImageName,
     result: input.ResultFinal,
@@ -328,19 +460,15 @@ function parseFixtureSlim(input: unknown): FixtureSlim {
   }
 }
 
-function parseFixture(input: unknown): Fixture {
-  if (!isObject(input)) {
-    throw new Error('Invalid fixture')
-  }
-
-  const [homeName, awayName] = input.Name.split(' - ')
+function parseFixture(input: ApiFixture): Fixture {
+  const [homeName = '', awayName = ''] = input.Name.split(' - ')
 
   return {
     id: `${input.FixtureId}`,
     startsAt: new Date(`${input.GameDate}T${input.GameTime}`),
     startsAtTime: String(input.GameTime).trim(),
     isAwayGame: input.IsAwayGame,
-    oppoonent: input.Opponent,
+    opponent: input.Opponent,
     type: input.GameType,
     result: input.ResultFinal,
     resultHalfTime: input.ResultHalfTime,
@@ -352,7 +480,7 @@ function parseFixture(input: unknown): Fixture {
     awayName,
     imageHomeUrl: input.ImageHome.replace(/w_\d*/, 'w_220'),
     imageAwayUrl: input.ImageAway.replace(/w_\d*/, 'w_220'),
-    attendence: input.Spectators,
+    attendance: input.Spectators,
     referee: input.Referee
       ? {
           id: input.Referee.RefereeId,
@@ -363,11 +491,7 @@ function parseFixture(input: unknown): Fixture {
   }
 }
 
-function parseTeamStats(input: unknown): TeamStats {
-  if (!isObject(input)) {
-    throw new Error('Invalid fixture')
-  }
-
+function parseTeamStats(input: ApiTeamStats): TeamStats {
   return {
     shots: input.Shots,
     shotsOnGoal: input.ShotsOnGoal,
@@ -382,11 +506,7 @@ function parseTeamStats(input: unknown): TeamStats {
   }
 }
 
-function parseFixtureStats(input: unknown): FixtureStats {
-  if (!isObject(input)) {
-    throw new Error('Invalid fixture')
-  }
-
+function parseFixtureStats(input: ApiFixtureStats): FixtureStats {
   const [homeStats, awayStats] = input.ItemList
 
   return {
@@ -395,11 +515,55 @@ function parseFixtureStats(input: unknown): FixtureStats {
   }
 }
 
-function parseName(input: string, type: FixtureEvent['type']) {
+const fixtureEventTypeIdMap = {
+  1: 'goal',
+  2: 'yellow_card',
+  3: 'second_yellow_card',
+  4: 'red_card',
+  5: 'substitution',
+  7: 'penalty_miss',
+  10: 'own_goal',
+} as const satisfies Record<number, FixtureEventType>
+
+type FixtureEventType =
+  | 'goal'
+  | 'yellow_card'
+  | 'second_yellow_card'
+  | 'red_card'
+  | 'substitution'
+  | 'penalty_miss'
+  | 'penalty_goal'
+  | 'own_goal'
+  | 'unknown'
+
+function parseFixtureEvent(input: ApiFixtureEvent): FixtureEvent {
+  const type: FixtureEventType = input.IsPenalty
+    ? 'penalty_goal'
+    : input.EventTypeId in fixtureEventTypeIdMap
+      ? fixtureEventTypeIdMap[
+          input.EventTypeId as keyof typeof fixtureEventTypeIdMap
+        ]
+      : 'unknown'
+
+  const { player, assist, inPlayer, outPlayer } = parseName(input.Name, type)
+
+  return {
+    id: input.FixtureEventId,
+    type,
+    minute: input.Minute,
+    player: titleCase(player),
+    assist: assist ? titleCase(assist) : undefined,
+    isLiverpool: input.IsLiverpool,
+    inPlayer: inPlayer ? titleCase(inPlayer) : undefined,
+    outPlayer: outPlayer ? titleCase(outPlayer) : undefined,
+  }
+}
+
+function parseName(input: string, type: FixtureEventType) {
   let player = input.trim()
-  let assist: undefined | string
-  let inPlayer: undefined | string
-  let outPlayer: undefined | string
+  let assist: string | undefined
+  let inPlayer: string | undefined
+  let outPlayer: string | undefined
 
   if (type === 'substitution') {
     // Parse substitution formatting, e.g. In: SALAH, Ut: DIAZ
@@ -425,51 +589,20 @@ function parseName(input: string, type: FixtureEvent['type']) {
   }
 }
 
-const fixtureEventTypeIdMap = {
-  1: 'goal',
-  2: 'yellow_card',
-  3: 'second_yellow_card',
-  4: 'red_card',
-  5: 'substitution',
-  7: 'penalty_miss',
-  10: 'own_goal',
-} as const satisfies Record<number, FixtureEvent['type']>
-
-function parseFixtureEvents(input: unknown): FixtureEvent {
-  if (!isObject(input)) {
-    throw new Error('Invalid fixture')
-  }
-
-  const type = input.IsPenalty
-    ? 'penalty_goal'
-    : input.EventTypeId in fixtureEventTypeIdMap
-      ? fixtureEventTypeIdMap[
-          input.EventTypeId as keyof typeof fixtureEventTypeIdMap
-        ]
-      : 'unknown'
-
-  const { player, assist, inPlayer, outPlayer } = parseName(input.Name, type)
-
+function parseStanding(input: ApiStanding): Standing {
   return {
-    id: input.FixtureEventId,
-    type,
-    minute: input.Minute,
-    player: titleCase(player),
-    assist: assist ? titleCase(assist) : undefined,
+    position: parseInt(input.Position, 10),
+    team: input.Team,
+    imageUrl: input.ImageName,
+    played: parseInt(input.Played, 10),
+    won: parseInt(input.Won, 10),
+    draw: parseInt(input.Draw, 10),
+    lost: parseInt(input.Lost, 10),
+    goalsFor: parseInt(input.Fore, 10),
+    goalsAgainst: parseInt(input.Against, 10),
+    goalDifference: parseInt(input.GoalDifference, 10),
+    points: parseInt(input.Points, 10),
     isLiverpool: input.IsLiverpool,
-    inPlayer: inPlayer ? titleCase(inPlayer) : undefined,
-    outPlayer: outPlayer ? titleCase(outPlayer) : undefined,
-  }
-}
-
-function parseSeason(input: unknown): Season {
-  if (!isObject(input)) {
-    throw new Error('Invalid fixture')
-  }
-
-  return {
-    id: input.SeasonId,
-    name: input.Name,
   }
 }
 
@@ -520,6 +653,10 @@ function parseMember(input: unknown): Member {
   }
 }
 
+///////////////////////////////////////////////////////////
+// App Types (what the app uses)
+///////////////////////////////////////////////////////////
+
 interface Tag {
   id: number
   value: string
@@ -541,9 +678,13 @@ export interface Post {
   publishedAt: Date
   imageUrl: string
   content: string
-  tags: Array<Tag>
-  author: User
+  tags: Tag[]
+  author: User | null
   commentsCount: number
+  likesCount: number
+  isLocked: boolean
+  hasLiked: boolean
+  isCommentsDisabled: boolean
 }
 
 export interface Comment {
@@ -554,7 +695,7 @@ export interface Comment {
   author: User
   comment: string
   numberOfLikes: number
-  replies: Array<Comment>
+  replies: Comment[]
 }
 
 export interface Season {
@@ -590,7 +731,7 @@ export interface FixtureSlim {
   startsAt: Date
   startsAtTime: string | null
   isAwayGame: boolean
-  oppoonent: string
+  opponent: string
   result: string | null
   resultHalfTime: string | null
   type: string
@@ -603,7 +744,7 @@ export interface Fixture {
   startsAt: Date
   startsAtTime: string | null
   isAwayGame: boolean
-  oppoonent: string
+  opponent: string
   result: string | null
   resultHalfTime: string | null
   type: string
@@ -611,7 +752,7 @@ export interface Fixture {
   arena: string
   spectators: number
   name: string
-  attendence: number
+  attendance: number
   homeName: string
   awayName: string
   imageHomeUrl: string
@@ -643,20 +784,58 @@ export interface FixtureStats {
 
 export interface FixtureEvent {
   id: string
-  type:
-    | 'goal'
-    | 'yellow_card'
-    | 'second_yellow_card'
-    | 'red_card'
-    | 'substitution'
-    | 'penalty_miss'
-    | 'penalty_goal'
-    | 'own_goal'
-    | ({} & string)
+  type: FixtureEventType
   minute: number
   player: string
   assist?: string
   isLiverpool: boolean
   inPlayer?: string
   outPlayer?: string
+}
+
+export interface Standing {
+  position: number
+  team: string
+  imageUrl: string
+  played: number
+  won: number
+  draw: number
+  lost: number
+  goalsFor: number
+  goalsAgainst: number
+  goalDifference: number
+  points: number
+  isLiverpool: boolean
+}
+
+///////////////////////////////////////////////////////////
+// Namespaced API
+///////////////////////////////////////////////////////////
+
+export const api = {
+  posts: {
+    get: getPost,
+    list: listPosts,
+  },
+  comments: {
+    list: listComments,
+  },
+  seasons: {
+    list: listSeasons,
+  },
+  fixtures: {
+    get: getFixture,
+    list: listFixtures,
+    getStats: getFixtureStats,
+    getEvents: getFixtureEvents,
+  },
+  standings: {
+    get: getStandings,
+  },
+  auth: {
+    login,
+    logout,
+    getMember: getMemberInformation,
+    setSessionToken,
+  },
 }

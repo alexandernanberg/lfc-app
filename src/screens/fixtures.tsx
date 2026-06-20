@@ -196,7 +196,7 @@ function Card({ fixture, isLast }: CardProps) {
 
         <View style={styles.match}>
           <TeamSide
-            name={fixture.isAwayGame ? fixture.oppoonent : 'Liverpool'}
+            name={fixture.isAwayGame ? fixture.opponent : 'Liverpool'}
             logoUrl={fixture.isAwayGame ? fixture.opponentLogoUrl : lfcLogoUrl}
             align="home"
           />
@@ -211,7 +211,7 @@ function Card({ fixture, isLast }: CardProps) {
           />
 
           <TeamSide
-            name={fixture.isAwayGame ? 'Liverpool' : fixture.oppoonent}
+            name={fixture.isAwayGame ? 'Liverpool' : fixture.opponent}
             logoUrl={fixture.isAwayGame ? lfcLogoUrl : fixture.opponentLogoUrl}
             align="away"
           />

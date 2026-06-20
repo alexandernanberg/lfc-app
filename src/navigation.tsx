@@ -19,6 +19,7 @@ import {
   NewsfeedPostScreen,
   NewsfeedPostShareButton,
 } from './screens/newsfeed-post'
+import { StandingsScreen } from './screens/standings'
 import { alphaColor, themes } from './theme'
 
 const NewsfeedNavigator = createNativeStackNavigator({
@@ -84,6 +85,23 @@ const FixturesNavigator = createNativeStackNavigator({
   },
 })
 
+const StandingsNavigator = createNativeStackNavigator({
+  initialRouteName: 'Table',
+  screenOptions: {
+    headerShadowVisible: false,
+    headerTransparent: true,
+  },
+  screens: {
+    Table: {
+      screen: StandingsScreen,
+      options: {
+        title: 'Tabell',
+        headerShown: false,
+      },
+    },
+  },
+})
+
 const HomeTabs = createNativeBottomTabNavigator({
   screenOptions: ({ theme }) => {
     return {
@@ -120,6 +138,16 @@ const HomeTabs = createNativeBottomTabNavigator({
         tabBarIcon: ({ focused }) => ({
           type: 'sfSymbol',
           name: focused ? 'ellipsis.circle.fill' : 'ellipsis.circle',
+        }),
+      },
+    },
+    Standings: {
+      screen: StandingsNavigator,
+      options: {
+        title: 'Tabell',
+        tabBarIcon: ({ focused }) => ({
+          type: 'sfSymbol',
+          name: focused ? 'list.number' : 'list.number',
         }),
       },
     },
