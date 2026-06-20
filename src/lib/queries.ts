@@ -8,6 +8,7 @@ import {
   getPost,
   listFixtures,
   listPosts,
+  listStanding,
 } from '~/api'
 import { queryClient } from './query-client'
 
@@ -81,6 +82,12 @@ function memberQuery(token: string | undefined) {
   })
 }
 
+const standingQuery = queryOptions({
+  queryKey: ['standing'],
+  queryFn: () => listStanding(),
+  staleTime: 5 * 60 * 1000,
+})
+
 export {
   fixtureEventsQuery,
   fixtureQuery,
@@ -90,4 +97,5 @@ export {
   postCommentsQuery,
   postQuery,
   postsQuery,
+  standingQuery,
 }

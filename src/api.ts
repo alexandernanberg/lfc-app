@@ -128,6 +128,14 @@ export async function getFixtureEvents(id: string) {
   return data.map((item) => parseFixtureEvents(item))
 }
 
+export async function listStanding() {
+  const url = new URL(`${API_URL}/Standing/GetStanding`)
+  const res = await fetch(url.toString())
+  const data = (await res.json()) as Array<unknown>
+
+  return data.map((item) => parseStanding(item))
+}
+
 ///////////////////////////////////////////////////////////
 // Auth
 ///////////////////////////////////////////////////////////
@@ -520,6 +528,31 @@ function parseMember(input: unknown): Member {
   }
 }
 
+function parseStanding(input: unknown): Standing {
+  if (!isObject(input)) {
+    throw new Error('Invalid standing')
+  }
+
+  const team = String(input.Team).trim()
+
+  return {
+    position: Number(input.Position),
+    team,
+    crestUrl: String(input.ImageName),
+    played: Number(input.Played),
+    won: Number(input.Won),
+    draw: Number(input.Draw),
+    lost: Number(input.Lost),
+    goalsFor: Number(input.Fore),
+    goalsAgainst: Number(input.Against),
+    goalDifference: Number(input.GoalDifference),
+    points: Number(input.Points),
+    // The API's IsLiverpool flag is unreliable (always false), so fall back to
+    // matching the team name.
+    isLiverpool: Boolean(input.IsLiverpool) || team === 'Liverpool',
+  }
+}
+
 interface Tag {
   id: number
   value: string
@@ -583,6 +616,21 @@ export interface Member {
   expirationDate: Date | null
   daysLeft: number
   numberOfComments: number
+}
+
+export interface Standing {
+  position: number
+  team: string
+  crestUrl: string
+  played: number
+  won: number
+  draw: number
+  lost: number
+  goalsFor: number
+  goalsAgainst: number
+  goalDifference: number
+  points: number
+  isLiverpool: boolean
 }
 
 export interface FixtureSlim {

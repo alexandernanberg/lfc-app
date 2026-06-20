@@ -126,7 +126,7 @@ function SectionHeader({ title }: { title: string }) {
   )
 }
 
-const lfcLogoUrl =
+export const lfcLogoUrl =
   'https://res.cloudinary.com/supportersplace/image/upload/w_60,fl_lossy,f_auto,fl_progressive/files_lfc_nu/opponent/lfc-crest.png'
 
 type Outcome = 'win' | 'loss' | 'draw' | 'upcoming'
