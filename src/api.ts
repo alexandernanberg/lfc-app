@@ -538,6 +538,7 @@ function parseStanding(input: unknown): Standing {
   return {
     position: Number(input.Position),
     team,
+    crestUrl: String(input.ImageName),
     played: Number(input.Played),
     won: Number(input.Won),
     draw: Number(input.Draw),
@@ -620,6 +621,7 @@ export interface Member {
 export interface Standing {
   position: number
   team: string
+  crestUrl: string
   played: number
   won: number
   draw: number

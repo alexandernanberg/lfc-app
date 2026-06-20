@@ -137,7 +137,7 @@ const HomeTabs = createNativeBottomTabNavigator({
         title: 'Tabell',
         tabBarIcon: ({ focused }) => ({
           type: 'sfSymbol',
-          name: focused ? 'tablecells.fill' : 'tablecells',
+          name: focused ? 'trophy.fill' : 'trophy',
         }),
       },
     },

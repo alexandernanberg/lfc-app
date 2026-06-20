@@ -1,5 +1,6 @@
 import { useScrollToTop } from '@react-navigation/native'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { Image } from 'expo-image'
 import { Suspense, useRef } from 'react'
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -8,6 +9,7 @@ import { Text } from '~/components/text'
 import { useTheme } from '~/components/theme-context'
 import { TAB_BAR_HEIGHT } from '~/lib/layout'
 import { standingQuery } from '~/lib/queries'
+import { lfcLogoUrl } from '~/screens/fixtures'
 import { alphaColor, colors } from '~/theme'
 
 export function StandingScreen() {
@@ -40,16 +42,12 @@ function Table() {
       contentInset={{ top: insets.top }}
       contentOffset={{ x: 0, y: -insets.top }}
       contentContainerStyle={{
-        paddingBottom: insets.bottom + TAB_BAR_HEIGHT,
+        paddingBottom: insets.bottom + TAB_BAR_HEIGHT + 24,
       }}
       refreshControl={
         <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
       }
     >
-      <View style={styles.heading}>
-        <Text variant="headingSmall">Premier League</Text>
-      </View>
-
       <HeaderRow />
 
       {data.map((row, index) => (
@@ -69,15 +67,14 @@ function Table() {
 function HeaderRow() {
   return (
     <View style={[styles.row, styles.headerRow]}>
-      <View style={styles.posCell}>
-        <Text
-          variant="captionSmall"
-          color="baseMuted"
-          style={styles.headerText}
-        >
-          #
-        </Text>
-      </View>
+      <Text
+        variant="captionSmall"
+        color="baseMuted"
+        style={[styles.posCell, styles.headerText]}
+      >
+        #
+      </Text>
+      <View style={styles.crestSpacer} />
       <Text
         variant="captionSmall"
         color="baseMuted"
@@ -86,34 +83,18 @@ function HeaderRow() {
         Lag
       </Text>
       <HeaderStat label="S" />
-      <HeaderStat label="V" />
-      <HeaderStat label="O" />
-      <HeaderStat label="F" />
-      <HeaderStat label="MS" wide />
+      <HeaderStat label="MS" />
       <HeaderStat label="P" points />
     </View>
   )
 }
 
-function HeaderStat({
-  label,
-  wide,
-  points,
-}: {
-  label: string
-  wide?: boolean
-  points?: boolean
-}) {
+function HeaderStat({ label, points }: { label: string; points?: boolean }) {
   return (
     <Text
       variant="captionSmall"
       color="baseMuted"
-      style={[
-        styles.statCell,
-        wide && styles.statCellWide,
-        points && styles.pointsCell,
-        styles.headerText,
-      ]}
+      style={[styles.statCell, points && styles.pointsCell, styles.headerText]}
     >
       {label}
     </Text>
@@ -149,20 +130,27 @@ function Row({ row, total, isLast }: RowProps) {
         row.isLiverpool && {
           backgroundColor: alphaColor(theme.foregroundAction, 0.1),
         },
-        !isLast && {
-          borderBottomColor: theme.borderBaseMuted,
-          borderBottomWidth: StyleSheet.hairlineWidth,
-        },
       ]}
     >
-      <View style={styles.posCell}>
+      {accent && (
+        <View style={[styles.accent, { backgroundColor: accent }]} />
+      )}
+
+      {!isLast && (
         <View
-          style={[styles.accent, { backgroundColor: accent ?? 'transparent' }]}
+          style={[styles.separator, { backgroundColor: theme.borderBaseMuted }]}
         />
-        <Text variant="bodySmall" style={styles.posText}>
-          {row.position}
-        </Text>
-      </View>
+      )}
+
+      <Text variant="bodySmall" style={[styles.posCell, styles.posText]}>
+        {row.position}
+      </Text>
+
+      <Image
+        source={row.isLiverpool ? lfcLogoUrl : row.crestUrl}
+        style={styles.crest}
+        contentFit="contain"
+      />
 
       <Text
         variant="bodySmall"
@@ -173,10 +161,7 @@ function Row({ row, total, isLast }: RowProps) {
       </Text>
 
       <Stat value={row.played} />
-      <Stat value={row.won} />
-      <Stat value={row.draw} />
-      <Stat value={row.lost} />
-      <Stat value={goalDifference} wide />
+      <Stat value={goalDifference} />
       <Stat value={row.points} points />
     </View>
   )
@@ -184,22 +169,16 @@ function Row({ row, total, isLast }: RowProps) {
 
 function Stat({
   value,
-  wide,
   points,
 }: {
   value: number | string
-  wide?: boolean
   points?: boolean
 }) {
   return (
     <Text
       variant="bodySmall"
       color={points ? 'base' : 'baseMuted'}
-      style={[
-        styles.statCell,
-        wide && styles.statCellWide,
-        points && styles.pointsCell,
-      ]}
+      style={[styles.statCell, points && styles.pointsCell]}
     >
       {value}
     </Text>
@@ -228,58 +207,72 @@ function LegendItem({ color, label }: { color: string; label: string }) {
 }
 
 const SCREEN_PADDING = 17
+const CREST_SIZE = 22
+const POS_WIDTH = 22
+const STAT_WIDTH = 34
 
 const styles = StyleSheet.create({
-  heading: {
-    paddingHorizontal: SCREEN_PADDING,
-    paddingTop: 24,
-    paddingBottom: 12,
-  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: SCREEN_PADDING,
-    minHeight: 44,
+    minHeight: 48,
   },
   headerRow: {
     minHeight: 32,
+    paddingTop: 12,
   },
   headerText: {
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
-  posCell: {
-    width: 30,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
   accent: {
+    position: 'absolute',
+    left: SCREEN_PADDING,
+    top: 0,
+    bottom: 0,
     width: 3,
-    height: 16,
-    borderRadius: 2,
+  },
+  separator: {
+    position: 'absolute',
+    left: SCREEN_PADDING,
+    right: SCREEN_PADDING,
+    bottom: 0,
+    height: StyleSheet.hairlineWidth,
+  },
+  posCell: {
+    width: POS_WIDTH,
+    marginLeft: 12,
+    textAlign: 'right',
+    fontVariant: ['tabular-nums'],
   },
   posText: {
-    fontVariant: ['tabular-nums'],
+    fontWeight: 500,
+  },
+  crest: {
+    width: CREST_SIZE,
+    height: CREST_SIZE,
+    marginLeft: 12,
+  },
+  crestSpacer: {
+    width: CREST_SIZE,
+    marginLeft: 12,
   },
   teamCell: {
     flex: 1,
+    marginLeft: 10,
     marginRight: 8,
   },
   teamCellActive: {
-    fontWeight: 600,
+    fontWeight: 500,
   },
   statCell: {
-    width: 24,
-    textAlign: 'center',
+    width: STAT_WIDTH,
+    textAlign: 'right',
     fontVariant: ['tabular-nums'],
   },
-  statCellWide: {
-    width: 34,
-  },
   pointsCell: {
-    width: 30,
-    fontWeight: 700,
+    fontWeight: 500,
   },
   legend: {
     flexDirection: 'row',
