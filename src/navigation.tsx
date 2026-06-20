@@ -13,6 +13,7 @@ import type { ColorSchemeName } from 'react-native'
 import { FixturesScreen } from './screens/fixtures'
 import { FixturesGameScreen } from './screens/fixtures-game'
 import { InfoScreen } from './screens/info'
+import { LoginScreen } from './screens/login'
 import { NewsfeedScreen } from './screens/newsfeed'
 import {
   NewsfeedPostScreen,
@@ -54,7 +55,7 @@ const InfoNavigator = createNativeStackNavigator({
     Feed: {
       screen: InfoScreen,
       options: {
-        title: 'Info',
+        title: 'Mer',
       },
     },
   },
@@ -115,10 +116,10 @@ const HomeTabs = createNativeBottomTabNavigator({
     Info: {
       screen: InfoNavigator,
       options: {
-        title: 'Info',
+        title: 'Mer',
         tabBarIcon: ({ focused }) => ({
           type: 'sfSymbol',
-          name: focused ? 'info.circle.fill' : 'info.circle',
+          name: focused ? 'ellipsis.circle.fill' : 'ellipsis.circle',
         }),
       },
     },
@@ -132,6 +133,15 @@ const RootStack = createNativeStackNavigator({
       screen: HomeTabs,
       options: {
         headerShown: false,
+      },
+    },
+    Login: {
+      screen: LoginScreen,
+      options: {
+        presentation: 'modal',
+        title: '',
+        headerShadowVisible: false,
+        headerTransparent: true,
       },
     },
   },

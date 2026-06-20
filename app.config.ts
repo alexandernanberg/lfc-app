@@ -33,15 +33,18 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     'expo-build-properties',
     'expo-image',
+    'expo-secure-store',
     'expo-sharing',
     [
       'expo-splash-screen',
       {
-        image: './assets/splash.png',
+        image: './assets/splash-icon.png',
+        imageWidth: 220,
         resizeMode: 'contain',
         backgroundColor: '#ffffff',
         dark: {
-          image: './assets/splash.png',
+          image: './assets/splash-icon.png',
+          imageWidth: 220,
           resizeMode: 'contain',
           backgroundColor: '#000000',
         },

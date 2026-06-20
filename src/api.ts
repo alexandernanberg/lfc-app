@@ -3,43 +3,92 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import { config } from '~/config'
 import { titleCase } from './utils'
 
 const API_URL = config.get('apiUrl')
 
+///////////////////////////////////////////////////////////
+// Request layer
+///////////////////////////////////////////////////////////
+
+// The provider authenticates requests with the `lfc-se` session cookie. On
+// login it returns a `SessionId` in the body (the same value that gets set as
+// that cookie), which we persist and replay as `Cookie: lfc-se=<token>` on
+// each request. We keep `credentials: 'include'` as well so the native cookie
+// jar stays in sync.
+let sessionToken: string | null = null
+
+/**
+ * Set (or clear) the session token used to authenticate API requests. The auth
+ * layer is the source of truth and keeps this in sync with persisted storage.
+ */
+export function setSessionToken(token: string | null) {
+  sessionToken = token
+}
+
+interface RequestOptions {
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
+  searchParams?: Record<string, string>
+  body?: unknown
+}
+
+async function request(path: string, options: RequestOptions = {}) {
+  const url = new URL(`${API_URL}${path}`)
+  for (const [key, value] of Object.entries(options.searchParams ?? {})) {
+    url.searchParams.set(key, value)
+  }
+
+  const headers: Record<string, string> = {}
+  if (options.body !== undefined) {
+    headers['Content-Type'] = 'application/json'
+  }
+  if (sessionToken) {
+    headers['Cookie'] = `lfc-se=${sessionToken}`
+  }
+
+  const res = await fetch(url.toString(), {
+    method: options.method ?? 'GET',
+    headers,
+    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    credentials: 'include',
+  })
+
+  if (!res.ok) {
+    throw new Error(`Request to ${path} failed with status ${res.status}`)
+  }
+
+  return res.json()
+}
+
 export async function getPost(id: string) {
-  const url = new URL(`${API_URL}/News/GetNewsById`)
-  url.searchParams.set('NewsId', id)
-  const res = await fetch(url.toString())
-  const data = await res.json()
+  const data = await request('/News/GetNewsById', {
+    searchParams: { NewsId: id },
+  })
 
   return parsePost(data)
 }
 
 export async function listPosts(limit = 10, offset = 0) {
   // REST API doesn't have limit and offset but only limit/items.
-  const url = new URL(`${API_URL}/News/GetNewsList`)
-  url.searchParams.set('items', (limit + offset).toString())
-  const res = await fetch(url.toString())
-  const data = (await res.json()) as Array<unknown>
+  const data = (await request('/News/GetNewsList', {
+    searchParams: { items: (limit + offset).toString() },
+  })) as Array<unknown>
 
   return data.slice(offset).map((item) => parsePost(item))
 }
 
 export async function getComments(id: string) {
-  const url = new URL(`${API_URL}/Comment/GetCommentList`)
-  url.searchParams.set('NewsId', id)
-  const res = await fetch(url.toString())
-  const data = (await res.json()) as Array<unknown>
+  const data = (await request('/Comment/GetCommentList', {
+    searchParams: { NewsId: id },
+  })) as Array<unknown>
 
   return data.map((item) => parseComment(item))
 }
 
 export async function listSeasons() {
-  const url = new URL(`${API_URL}/Fixture/GetSeasonList`)
-  const res = await fetch(url.toString())
-  const data = (await res.json()) as Array<unknown>
+  const data = (await request('/Fixture/GetSeasonList')) as Array<unknown>
 
   return data.map((item) => parseSeason(item))
 }
@@ -48,39 +97,97 @@ export async function listFixtures() {
   const seasons = await listSeasons()
   const seasonId = seasons.at(0)?.id ?? '36'
 
-  const url = new URL(`${API_URL}/Fixture/GetFixture`)
-  url.searchParams.set('seasonId', seasonId)
-  const res = await fetch(url.toString())
-  const data = (await res.json()) as Array<unknown>
+  const data = (await request('/Fixture/GetFixture', {
+    searchParams: { seasonId },
+  })) as Array<unknown>
 
   return data.map((item) => parseFixtureSlim(item))
 }
 
 export async function getFixture(id: string) {
-  const url = new URL(`${API_URL}/Fixture/GetFixtureById`)
-  url.searchParams.set('fixtureId', id)
-  const res = await fetch(url.toString())
-  const data = await res.json()
+  const data = await request('/Fixture/GetFixtureById', {
+    searchParams: { fixtureId: id },
+  })
 
   return parseFixture(data)
 }
 
 export async function getFixtureStats(id: string) {
-  const url = new URL(`${API_URL}/Fixture/GetFixtureTeamStats`)
-  url.searchParams.set('fixtureId', id)
-  const res = await fetch(url.toString())
-  const data = await res.json()
+  const data = await request('/Fixture/GetFixtureTeamStats', {
+    searchParams: { fixtureId: id },
+  })
 
   return parseFixtureStats(data)
 }
 
 export async function getFixtureEvents(id: string) {
-  const url = new URL(`${API_URL}/Fixture/GetFixtureEvents`)
-  url.searchParams.set('fixtureId', id)
-  const res = await fetch(url.toString())
-  const data = (await res.json()) as Array<unknown>
+  const data = (await request('/Fixture/GetFixtureEvents', {
+    searchParams: { fixtureId: id },
+  })) as Array<unknown>
 
   return data.map((item) => parseFixtureEvents(item))
+}
+
+///////////////////////////////////////////////////////////
+// Auth
+///////////////////////////////////////////////////////////
+
+/**
+ * Thrown when the provider rejects a login attempt. `errors` holds the
+ * field-level messages returned by the API (already localized in Swedish).
+ */
+export class AuthError extends Error {
+  errors: Array<{ name: string | null; message: string }>
+
+  constructor(
+    message: string,
+    errors: Array<{ name: string | null; message: string }> = [],
+  ) {
+    super(message)
+    this.name = 'AuthError'
+    this.errors = errors
+  }
+}
+
+export async function login(
+  username: string,
+  password: string,
+): Promise<Session> {
+  const data = await request('/Login', {
+    method: 'POST',
+    body: { Username: username, Password: password },
+  })
+
+  if (!isObject(data) || !data.SessionId) {
+    const errors = (Array.isArray(data?.ErrorList) ? data.ErrorList : []).map(
+      (error: any) => ({
+        name: error?.Name ?? null,
+        message: error?.Value ?? '',
+      }),
+    )
+    const message =
+      errors.find((e: { message: string }) => e.message)?.message ??
+      'Inloggningen misslyckades'
+    throw new AuthError(message, errors)
+  }
+
+  return parseSession(data)
+}
+
+export async function logout(): Promise<void> {
+  // Best-effort: clear the server-side session. We always clear locally
+  // regardless of the result, so swallow network/server errors here.
+  try {
+    await request('/Logout', { method: 'POST', body: {} })
+  } catch {
+    // ignore
+  }
+}
+
+export async function getMemberInformation(): Promise<Member> {
+  const data = await request('/Member/GetMemberInformation')
+
+  return parseMember(data)
 }
 
 ///////////////////////////////////////////////////////////
@@ -366,6 +473,53 @@ function parseSeason(input: unknown): Season {
   }
 }
 
+function parseSession(input: unknown): Session {
+  if (!isObject(input)) {
+    throw new Error('Invalid session')
+  }
+
+  const validThru = input.ValidThru ? new Date(input.ValidThru) : null
+
+  return {
+    token: input.SessionId,
+    memberId: `${input.MemberId}`,
+    username: input.Username,
+    validThru:
+      validThru && !Number.isNaN(validThru.getTime()) ? validThru : null,
+    domain: input.Domain ?? null,
+  }
+}
+
+function parseMember(input: unknown): Member {
+  if (!isObject(input)) {
+    throw new Error('Invalid member')
+  }
+
+  const expirationDate = input.ExpirationDate
+    ? new Date(input.ExpirationDate)
+    : null
+
+  return {
+    id: `${input.MemberId}`,
+    membershipNumber: input.MembershipNumber,
+    firstName: input.FirstName,
+    lastName: input.LastName,
+    name: input.Name,
+    username: input.Username,
+    email: input.Email,
+    avatarUrl: input.ImageName?.includes('default-avatar')
+      ? null
+      : (input.ImageName ?? null),
+    signature: input.Signature || null,
+    expirationDate:
+      expirationDate && !Number.isNaN(expirationDate.getTime())
+        ? expirationDate
+        : null,
+    daysLeft: input.DaysLeft ?? 0,
+    numberOfComments: input.NumberOfComments ?? 0,
+  }
+}
+
 interface Tag {
   id: number
   value: string
@@ -406,6 +560,29 @@ export interface Comment {
 export interface Season {
   id: string
   name: string
+}
+
+export interface Session {
+  token: string
+  memberId: string
+  username: string
+  validThru: Date | null
+  domain: string | null
+}
+
+export interface Member {
+  id: string
+  membershipNumber: number
+  firstName: string
+  lastName: string
+  name: string
+  username: string
+  email: string
+  avatarUrl: string | null
+  signature: string | null
+  expirationDate: Date | null
+  daysLeft: number
+  numberOfComments: number
 }
 
 export interface FixtureSlim {

@@ -31,6 +31,7 @@
     "expo-linking": "~56.0.14",
     "expo-modules-core": "~56.0.16",
     "expo-network": "~56.0.5",
+    "expo-secure-store": "~56.0.4",
     "expo-sharing": "~56.0.17",
     "expo-splash-screen": "~56.0.10",
     "expo-status-bar": "~56.0.4",
