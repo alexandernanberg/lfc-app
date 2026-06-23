@@ -6,10 +6,11 @@ import { formatRelative } from 'date-fns'
 import type { Locale } from 'date-fns/locale'
 import { sv } from 'date-fns/locale'
 import { Image } from 'expo-image'
-import { Suspense, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { FixtureSlim } from '~/api'
+import { QueryBoundary } from '~/components/query-boundary'
 import { Text } from '~/components/text'
 import { useTheme } from '~/components/theme-context'
 import { TAB_BAR_HEIGHT } from '~/lib/layout'
@@ -27,9 +28,9 @@ import { capitalizeFirstLetter } from '~/utils'
 
 export function FixturesScreen() {
   return (
-    <Suspense fallback={null}>
+    <QueryBoundary>
       <List />
-    </Suspense>
+    </QueryBoundary>
   )
 }
 

@@ -1,10 +1,11 @@
 import { useScrollToTop } from '@react-navigation/native'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Image } from 'expo-image'
-import { Suspense, useRef } from 'react'
+import { useRef } from 'react'
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { Standing } from '~/api'
+import { QueryBoundary } from '~/components/query-boundary'
 import { Text } from '~/components/text'
 import { useTheme } from '~/components/theme-context'
 import { TAB_BAR_HEIGHT } from '~/lib/layout'
@@ -14,9 +15,9 @@ import { alphaColor, colors } from '~/theme'
 
 export function StandingScreen() {
   return (
-    <Suspense fallback={null}>
+    <QueryBoundary>
       <Table />
-    </Suspense>
+    </QueryBoundary>
   )
 }
 

@@ -3,7 +3,7 @@ import type { LegendListRef } from '@legendapp/list'
 import { useNavigation, useScrollToTop } from '@react-navigation/native'
 import { useSuspenseInfiniteQuery } from '@tanstack/react-query'
 import { Image } from 'expo-image'
-import { Suspense, useCallback, useMemo, useRef } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import {
   ActivityIndicator,
   Pressable,
@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import SFSymbol from 'sf-symbols'
 import type { Post } from '~/api'
+import { QueryBoundary } from '~/components/query-boundary'
 import { Separator } from '~/components/separator'
 import { Text } from '~/components/text'
 import { useTheme } from '~/components/theme-context'
@@ -25,9 +26,9 @@ import { RelativeTime } from '~/lib/use-relative-time-formatter'
 
 export function NewsfeedScreen() {
   return (
-    <Suspense fallback={null}>
+    <QueryBoundary>
       <List />
-    </Suspense>
+    </QueryBoundary>
   )
 }
 

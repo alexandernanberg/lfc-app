@@ -2,10 +2,11 @@ import type { StaticScreenProps } from '@react-navigation/native'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { Image } from 'expo-image'
 import type { ReactNode } from 'react'
-import { Suspense, useState } from 'react'
+import { useState } from 'react'
 import { ScrollView, StyleSheet, useColorScheme, View } from 'react-native'
 import SFSymbol from 'sf-symbols'
 import type { Fixture, FixtureEvent } from '~/api'
+import { QueryBoundary } from '~/components/query-boundary'
 import { SegmentedControl } from '~/components/segmented-control'
 import { Separator } from '~/components/separator'
 import { Text } from '~/components/text'
@@ -26,9 +27,9 @@ type Props = StaticScreenProps<{
 
 export function FixturesGameScreen({ route }: Props) {
   return (
-    <Suspense fallback={null}>
+    <QueryBoundary>
       <Content id={route.params.id} />
-    </Suspense>
+    </QueryBoundary>
   )
 }
 
@@ -171,7 +172,7 @@ function SegmentedControlsContent({ fixture }: SegmentedControlsContentProps) {
         onChange={setSelectedIndex}
       />
       <View style={{ paddingBlock: 24 }}>
-        <Suspense fallback={null}>
+        <QueryBoundary>
           {(() => {
             switch (selectedIndex) {
               case 0:
@@ -187,7 +188,7 @@ function SegmentedControlsContent({ fixture }: SegmentedControlsContentProps) {
                 return null
             }
           })()}
-        </Suspense>
+        </QueryBoundary>
       </View>
     </>
   )

@@ -19,6 +19,7 @@ import {
   NewsfeedPostScreen,
   NewsfeedPostShareButton,
 } from './screens/newsfeed-post'
+import { NotificationSettingsScreen } from './screens/notifications-settings'
 import { StandingScreen } from './screens/standing'
 import { alphaColor, themes } from './theme'
 
@@ -57,6 +58,12 @@ const InfoNavigator = createNativeStackNavigator({
       screen: InfoScreen,
       options: {
         title: 'Mer',
+      },
+    },
+    Notifications: {
+      screen: NotificationSettingsScreen,
+      options: {
+        title: 'Notiser',
       },
     },
   },

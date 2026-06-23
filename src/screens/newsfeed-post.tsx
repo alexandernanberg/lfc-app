@@ -5,7 +5,7 @@ import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { Image } from 'expo-image'
 import * as Sharing from 'expo-sharing'
 import type { ReactNode } from 'react'
-import { Suspense, useEffect } from 'react'
+import { useEffect } from 'react'
 import {
   ActivityIndicator,
   Pressable,
@@ -27,6 +27,7 @@ import type { Comment } from '~/api'
 import { likeComment } from '~/api'
 import { useAuth } from '~/components/auth-context'
 import { InstagramEmbed } from '~/components/instagram-embed'
+import { QueryBoundary } from '~/components/query-boundary'
 import { Separator } from '~/components/separator'
 import { Text } from '~/components/text'
 import { useTheme } from '~/components/theme-context'
@@ -42,9 +43,9 @@ type Props = StaticScreenProps<{
 
 export function NewsfeedPostScreen({ route }: Props) {
   return (
-    <Suspense fallback={null}>
+    <QueryBoundary>
       <Content id={route.params.id} />
-    </Suspense>
+    </QueryBoundary>
   )
 }
 
@@ -196,9 +197,9 @@ function Content({ id }: { id: string }) {
           )}
         </View>
         <Separator />
-        <Suspense fallback={<ActivityIndicator />}>
+        <QueryBoundary pending={<ActivityIndicator />}>
           <Comments postId={id} />
-        </Suspense>
+        </QueryBoundary>
       </View>
     </ScrollView>
   )

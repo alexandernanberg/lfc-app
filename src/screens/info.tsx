@@ -28,6 +28,7 @@ const appIcon = require('../../assets/icon.png') as number
 
 export function InfoScreen() {
   const theme = useTheme()
+  const navigation = useNavigation()
   const version = Constants.expoConfig?.version ?? '1.0.0'
 
   return (
@@ -50,6 +51,25 @@ export function InfoScreen() {
       </View>
 
       <AccountSection />
+
+      <View
+        style={[
+          styles.section,
+          styles.settingsSection,
+          { borderColor: theme.borderBaseMuted },
+        ]}
+      >
+        <Row
+          icon="bell"
+          label="Notiser"
+          onPress={() =>
+            navigation.navigate('Home', {
+              screen: 'Info',
+              params: { screen: 'Notifications' },
+            })
+          }
+        />
+      </View>
 
       <View style={[styles.section, { borderColor: theme.borderBaseMuted }]}>
         <Row
@@ -277,6 +297,9 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
   },
   accountSection: {
+    marginBottom: 16,
+  },
+  settingsSection: {
     marginBottom: 16,
   },
   account: {
