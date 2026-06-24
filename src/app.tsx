@@ -79,12 +79,18 @@ function App() {
       if (status !== 'active') {
         return
       }
-      const newestId = queryClient
+      // Don't use position 0 — the feed pins a featured article first, which
+      // isn't necessarily the newest. Take the max publish time instead.
+      const posts = queryClient
         .getQueryData(postsQuery.queryKey)
         ?.pages.flat()
-        .at(0)?.id
-      if (newestId) {
-        void markLatestPostSeen(newestId)
+      const newest = posts?.reduce<Date | null>(
+        (max, post) =>
+          max == null || post.publishedAt > max ? post.publishedAt : max,
+        null,
+      )
+      if (newest) {
+        void markLatestPostSeen(newest)
       }
     })
 

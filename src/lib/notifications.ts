@@ -18,9 +18,14 @@ import { listPosts } from '~/api'
 // Stable identifier the OS uses to invoke the headless task — must not change
 // across releases or previously-registered tasks orphan.
 const BACKGROUND_TASK = 'lfc-check-new-posts'
-// Id of the newest post we've already accounted for. Not sensitive, but
-// SecureStore is already a dependency so we avoid pulling in AsyncStorage.
-const LAST_SEEN_KEY = 'notifications-last-seen-post-id'
+// Publish time (ISO) of the newest post we've already accounted for. We key off
+// the timestamp rather than a post id because the list endpoint pins a featured
+// article first regardless of date — so the first item isn't reliably the
+// newest, and an id marker would let a pinned older post mask every genuinely
+// new article behind it. Not sensitive, but SecureStore is already a dependency
+// so we avoid pulling in AsyncStorage. (Key renamed from the old post-id marker,
+// so existing installs harmlessly re-seed on first run.)
+const LAST_SEEN_KEY = 'notifications-last-seen-published-at'
 // User's on/off preference for new-article notifications. Defaults to on.
 const ENABLED_KEY = 'notifications-enabled'
 // Cap notifications per wakeup so a long offline gap can't flood the tray.
@@ -57,33 +62,37 @@ export async function checkForNewPosts(): Promise<void> {
     return
   }
 
-  // Posts come back newest-first.
-  const newestId = posts[0]!.id
-  const lastSeen = await SecureStore.getItemAsync(LAST_SEEN_KEY)
+  // The list endpoint pins a featured article first, so its order isn't
+  // reliably chronological. Sort by publish time ourselves before doing any
+  // newest/delta reasoning.
+  const sorted = [...posts].sort(
+    (a, b) => b.publishedAt.getTime() - a.publishedAt.getTime(),
+  )
+  const newest = sorted[0]!.publishedAt
 
-  // First run: record the current newest without notifying, so enabling
-  // notifications doesn't dump the entire existing backlog at once.
-  if (lastSeen == null) {
-    await SecureStore.setItemAsync(LAST_SEEN_KEY, newestId)
+  const lastSeenRaw = await SecureStore.getItemAsync(LAST_SEEN_KEY)
+  const lastSeen = lastSeenRaw ? new Date(lastSeenRaw) : null
+
+  // First run (or a stale/invalid marker): record the current newest without
+  // notifying, so enabling notifications doesn't dump the entire backlog.
+  if (lastSeen == null || Number.isNaN(lastSeen.getTime())) {
+    await SecureStore.setItemAsync(LAST_SEEN_KEY, newest.toISOString())
     return
   }
 
-  if (newestId === lastSeen) {
+  // Everything published since the marker. Comparing by time (not array
+  // position) means a pinned older article simply sorts below the marker
+  // instead of hiding the real new posts.
+  const fresh = sorted.filter(
+    (post) => post.publishedAt.getTime() > lastSeen.getTime(),
+  )
+  if (fresh.length === 0) {
     return
-  }
-
-  // Everything newer than the marker (stop as soon as we reach it).
-  const fresh: typeof posts = []
-  for (const post of posts) {
-    if (post.id === lastSeen) {
-      break
-    }
-    fresh.push(post)
   }
 
   // Advance the marker up front so a notification failure can't cause repeats
   // on the next wakeup.
-  await SecureStore.setItemAsync(LAST_SEEN_KEY, newestId)
+  await SecureStore.setItemAsync(LAST_SEEN_KEY, newest.toISOString())
 
   // Notify oldest-first and capped, so the newest ends up on top of the tray
   // and a backlog can't spam the user.
@@ -178,13 +187,27 @@ export async function hasNotificationPermission(): Promise<boolean> {
 }
 
 /**
- * Advance the seen-marker to a post the user has already encountered in-app
- * (e.g. the newest item in the loaded feed), without notifying. Prevents the
- * next background run from notifying about articles the user has effectively
- * already seen.
+ * Advance the seen-marker to the publish time of a post the user has already
+ * encountered in-app (e.g. the newest item in the loaded feed), without
+ * notifying. Prevents the next background run from notifying about articles the
+ * user has effectively already seen.
  */
-export async function markLatestPostSeen(postId: string): Promise<void> {
-  await SecureStore.setItemAsync(LAST_SEEN_KEY, postId)
+export async function markLatestPostSeen(publishedAt: Date): Promise<void> {
+  if (Number.isNaN(publishedAt.getTime())) {
+    return
+  }
+  // Only ever advance the marker forward, so a stale/out-of-order entry in the
+  // loaded feed can't drag it backwards and re-trigger notifications.
+  const existingRaw = await SecureStore.getItemAsync(LAST_SEEN_KEY)
+  const existing = existingRaw ? new Date(existingRaw) : null
+  if (
+    existing &&
+    !Number.isNaN(existing.getTime()) &&
+    existing.getTime() >= publishedAt.getTime()
+  ) {
+    return
+  }
+  await SecureStore.setItemAsync(LAST_SEEN_KEY, publishedAt.toISOString())
 }
 
 /** Extract the post id from a tapped notification, if it carries one. */
