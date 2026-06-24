@@ -23,6 +23,10 @@ import { alphaColor } from '~/theme'
 
 const WEBSITE_URL = 'https://www.lfc.se'
 
+// Leading inset for in-cell separators so they align under the row label,
+// past the leading icon (paddingHorizontal 16 + icon 20 + gap 12).
+const ROW_SEPARATOR_INSET = 48
+
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const appIcon = require('../../assets/icon.png') as number
 
@@ -32,7 +36,10 @@ export function InfoScreen() {
   const version = Constants.expoConfig?.version ?? '1.0.0'
 
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ flex: 1 }}>
+    <ScrollView
+      contentInsetAdjustmentBehavior="automatic"
+      style={{ flex: 1, backgroundColor: theme.backgroundGrouped }}
+    >
       <View style={styles.header}>
         <Image
           source={appIcon}
@@ -56,7 +63,7 @@ export function InfoScreen() {
         style={[
           styles.section,
           styles.settingsSection,
-          { borderColor: theme.borderBaseMuted },
+          { backgroundColor: theme.backgroundGroupedElevated },
         ]}
       >
         <Row
@@ -71,7 +78,12 @@ export function InfoScreen() {
         />
       </View>
 
-      <View style={[styles.section, { borderColor: theme.borderBaseMuted }]}>
+      <View
+        style={[
+          styles.section,
+          { backgroundColor: theme.backgroundGroupedElevated },
+        ]}
+      >
         <Row
           icon="globe"
           label="Besök lfc.se"
@@ -79,7 +91,7 @@ export function InfoScreen() {
             void Linking.openURL(WEBSITE_URL)
           }}
         />
-        <Separator />
+        <Separator inset={ROW_SEPARATOR_INSET} />
         <Row
           icon="square.and.arrow.up"
           label="Dela appen"
@@ -119,7 +131,7 @@ function AccountSection() {
         style={[
           styles.section,
           styles.accountSection,
-          { borderColor: theme.borderBaseMuted },
+          { backgroundColor: theme.backgroundGroupedElevated },
         ]}
       >
         <Row
@@ -147,7 +159,7 @@ function AccountSection() {
       style={[
         styles.section,
         styles.accountSection,
-        { borderColor: theme.borderBaseMuted },
+        { backgroundColor: theme.backgroundGroupedElevated },
       ]}
     >
       <View style={styles.account}>
@@ -186,7 +198,7 @@ function AccountSection() {
 
       {member?.expirationDate ? (
         <>
-          <Separator />
+          <Separator inset={16} />
           <View style={styles.membership}>
             <View style={{ flex: 1 }}>
               <Text variant="bodyMedium">Medlemskap</Text>
@@ -217,7 +229,7 @@ function AccountSection() {
         </>
       ) : null}
 
-      <Separator />
+      <Separator inset={ROW_SEPARATOR_INSET} />
       <Row
         icon="rectangle.portrait.and.arrow.right"
         label="Logga ut"
@@ -244,7 +256,7 @@ function Row({ icon, label, onPress, actionLabel, destructive }: RowProps) {
       onPress={onPress}
       style={({ pressed }) => [
         styles.row,
-        pressed && { backgroundColor: theme.backgroundBaseElevated },
+        pressed && { backgroundColor: theme.backgroundHighlighted },
       ]}
     >
       <SFSymbol
@@ -292,9 +304,8 @@ const styles = StyleSheet.create({
   },
   section: {
     marginHorizontal: 17,
-    borderRadius: 12,
+    borderRadius: 10,
     overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
   },
   accountSection: {
     marginBottom: 16,

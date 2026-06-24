@@ -58,6 +58,17 @@ export interface Theme {
   backgroundBase: string
   backgroundBaseElevated: string
 
+  // iOS grouped table view surfaces (Settings-style screens):
+  // `backgroundGrouped` is the page background, `backgroundGroupedElevated`
+  // the inset cell background. Mirrors Apple's systemGroupedBackground and
+  // secondarySystemGroupedBackground.
+  backgroundGrouped: string
+  backgroundGroupedElevated: string
+
+  // Translucent press/selection highlight (akin to Apple's systemFill).
+  // Semi-transparent so it reads over both base and grouped cell backgrounds.
+  backgroundHighlighted: string
+
   foregroundBase: string
   foregroundBaseMuted: string
   foregroundAction: string
@@ -71,23 +82,35 @@ export const themes: Record<'light' | 'dark', Theme> = {
     backgroundBase: colors.white,
     backgroundBaseElevated: colors.gray100,
 
+    backgroundGrouped: '#f2f2f7',
+    backgroundGroupedElevated: colors.white,
+
+    backgroundHighlighted: 'rgba(60,60,67,0.08)',
+
     foregroundBase: colors.gray950,
     foregroundBaseMuted: colors.gray600,
     foregroundAction: colors.red600,
 
     borderBase: colors.gray300,
-    borderBaseMuted: colors.gray200,
+    // Apple's `separator` color — a semi-transparent hairline that reads
+    // correctly over any background.
+    borderBaseMuted: 'rgba(60,60,67,0.29)',
   },
   dark: {
     backgroundBase: colors.black,
-    backgroundBaseElevated: colors.gray900,
+    backgroundBaseElevated: '#1c1c1e',
+
+    backgroundGrouped: colors.black,
+    backgroundGroupedElevated: '#1c1c1e',
+
+    backgroundHighlighted: 'rgba(120,120,128,0.24)',
 
     foregroundBase: colors.gray200,
     foregroundBaseMuted: colors.gray500,
     foregroundAction: colors.red500,
 
     borderBase: colors.gray800,
-    borderBaseMuted: colors.gray800,
+    borderBaseMuted: 'rgba(84,84,88,0.65)',
   },
 }
 

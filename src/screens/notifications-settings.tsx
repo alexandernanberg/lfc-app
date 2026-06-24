@@ -55,8 +55,16 @@ export function NotificationSettingsScreen() {
   const showPermissionWarning = enabled && !permissionGranted
 
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ flex: 1 }}>
-      <View style={[styles.section, { borderColor: theme.borderBaseMuted }]}>
+    <ScrollView
+      contentInsetAdjustmentBehavior="automatic"
+      style={{ flex: 1, backgroundColor: theme.backgroundGrouped }}
+    >
+      <View
+        style={[
+          styles.section,
+          { backgroundColor: theme.backgroundGroupedElevated },
+        ]}
+      >
         <View style={styles.row}>
           <SFSymbol
             name="newspaper"
@@ -86,7 +94,7 @@ export function NotificationSettingsScreen() {
           style={[
             styles.section,
             styles.warning,
-            { borderColor: theme.borderBaseMuted },
+            { backgroundColor: theme.backgroundGroupedElevated },
           ]}
         >
           <Text variant="bodySmall" style={styles.warningText}>
@@ -98,7 +106,7 @@ export function NotificationSettingsScreen() {
             onPress={() => void Linking.openSettings()}
             style={({ pressed }) => [
               styles.settingsButton,
-              pressed && { backgroundColor: theme.backgroundBaseElevated },
+              pressed && { backgroundColor: theme.backgroundHighlighted },
             ]}
           >
             <Text
@@ -117,9 +125,8 @@ export function NotificationSettingsScreen() {
 const styles = StyleSheet.create({
   section: {
     marginHorizontal: 17,
-    borderRadius: 12,
+    borderRadius: 10,
     overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
   },
   row: {
     flexDirection: 'row',
