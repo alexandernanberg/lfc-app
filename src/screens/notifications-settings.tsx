@@ -1,16 +1,8 @@
+import { Button, Form, Host, Section, Text, Toggle } from '@expo/ui/swift-ui'
+import { tint } from '@expo/ui/swift-ui/modifiers'
 import { useFocusEffect } from '@react-navigation/native'
 import { useCallback, useState } from 'react'
-import {
-  Linking,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  View,
-} from 'react-native'
-import SFSymbol from 'sf-symbols'
-import { Separator } from '~/components/separator'
-import { Text } from '~/components/text'
+import { Linking } from 'react-native'
 import { useTheme } from '~/components/theme-context'
 import {
   getNewPostNotificationsEnabled,
@@ -55,102 +47,44 @@ export function NotificationSettingsScreen() {
   const showPermissionWarning = enabled && !permissionGranted
 
   return (
-    <ScrollView
-      contentInsetAdjustmentBehavior="automatic"
-      style={{ flex: 1, backgroundColor: theme.backgroundGrouped }}
+    <Host
+      style={{ flex: 1 }}
+      useViewportSizeMeasurement
+      modifiers={[tint(theme.foregroundAction)]}
     >
-      <View
-        style={[
-          styles.section,
-          { backgroundColor: theme.backgroundGroupedElevated },
-        ]}
-      >
-        <View style={styles.row}>
-          <SFSymbol
-            name="newspaper"
-            weight="regular"
-            scale="small"
-            colors={[theme.foregroundAction]}
-            size={20}
-          />
-          <Text variant="bodyMedium" style={{ flex: 1 }}>
-            Nya artiklar
-          </Text>
-          <Switch
-            value={enabled}
-            onValueChange={(value) => void onToggle(value)}
-            trackColor={{ true: theme.foregroundAction }}
-          />
-        </View>
-      </View>
-
-      <Text color="baseMuted" variant="captionLarge" style={styles.caption}>
-        Få en notis när en ny artikel publiceras på lfc.se. Notiserna hämtas i
-        bakgrunden och kan fördröjas av systemet.
-      </Text>
-
-      {showPermissionWarning ? (
-        <View
-          style={[
-            styles.section,
-            styles.warning,
-            { backgroundColor: theme.backgroundGroupedElevated },
-          ]}
-        >
-          <Text variant="bodySmall" style={styles.warningText}>
-            Notiser är avstängda i systeminställningarna. Slå på dem för att ta
-            emot notiser.
-          </Text>
-          <Separator />
-          <Pressable
-            onPress={() => void Linking.openSettings()}
-            style={({ pressed }) => [
-              styles.settingsButton,
-              pressed && { backgroundColor: theme.backgroundHighlighted },
-            ]}
-          >
-            <Text
-              variant="bodyMedium"
-              style={{ color: theme.foregroundAction }}
-            >
-              Öppna systeminställningar
+      <Form>
+        <Section
+          footer={
+            <Text>
+              Få en notis när en ny artikel publiceras på lfc.se. Notiserna
+              hämtas i bakgrunden och kan fördröjas av systemet.
             </Text>
-          </Pressable>
-        </View>
-      ) : null}
-    </ScrollView>
+          }
+        >
+          <Toggle
+            label="Nya artiklar"
+            isOn={enabled}
+            onIsOnChange={(value) => void onToggle(value)}
+          />
+        </Section>
+
+        {showPermissionWarning ? (
+          <Section
+            footer={
+              <Text>
+                Notiser är avstängda i systeminställningarna. Slå på dem för att
+                ta emot notiser.
+              </Text>
+            }
+          >
+            <Button
+              systemImage="gear"
+              label="Öppna systeminställningar"
+              onPress={() => void Linking.openSettings()}
+            />
+          </Section>
+        ) : null}
+      </Form>
+    </Host>
   )
 }
-
-const styles = StyleSheet.create({
-  section: {
-    marginHorizontal: 17,
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    minHeight: 52,
-  },
-  caption: {
-    paddingHorizontal: 17,
-    paddingTop: 8,
-    paddingBottom: 16,
-  },
-  warning: {
-    marginTop: 8,
-  },
-  warningText: {
-    paddingTop: 14,
-    paddingBottom: 14,
-    paddingHorizontal: 16,
-  },
-  settingsButton: {
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-  },
-})

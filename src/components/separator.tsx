@@ -1,7 +1,7 @@
 import { StyleSheet, View } from 'react-native'
 import { useTheme } from './theme-context'
 
-export function Separator({ inset = 0 }: { inset?: number }) {
+export function Separator() {
   const theme = useTheme()
 
   return (
@@ -9,7 +9,6 @@ export function Separator({ inset = 0 }: { inset?: number }) {
       style={{
         height: StyleSheet.hairlineWidth,
         backgroundColor: theme.borderBaseMuted,
-        marginLeft: inset,
       }}
     />
   )

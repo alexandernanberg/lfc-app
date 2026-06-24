@@ -58,12 +58,17 @@ const InfoNavigator = createNativeStackNavigator({
       screen: InfoScreen,
       options: {
         title: 'Mer',
+        // These screens render native SwiftUI Forms (@expo/ui), which lay out
+        // their own scroll/safe-area. An opaque header keeps the form content
+        // below the nav bar instead of underlapping a transparent one.
+        headerTransparent: false,
       },
     },
     Notifications: {
       screen: NotificationSettingsScreen,
       options: {
         title: 'Notiser',
+        headerTransparent: false,
       },
     },
   },

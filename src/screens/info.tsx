@@ -1,115 +1,178 @@
+import {
+  Button,
+  Form,
+  Host,
+  HStack,
+  Image,
+  LabeledContent,
+  Section,
+  Text,
+  VStack,
+} from '@expo/ui/swift-ui'
+import {
+  clipShape,
+  foregroundStyle,
+  frame,
+  tint,
+} from '@expo/ui/swift-ui/modifiers'
 import { useNavigation } from '@react-navigation/native'
 import { useQuery } from '@tanstack/react-query'
+import { Asset } from 'expo-asset'
 import Constants from 'expo-constants'
-import { Image } from 'expo-image'
+import { Image as ExpoImage } from 'expo-image'
 import * as Sharing from 'expo-sharing'
-import {
-  Alert,
-  Linking,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native'
-import SFSymbol from 'sf-symbols'
-import type { SFSymbol as SFSymbolName } from 'sf-symbols-typescript'
+import { useEffect, useState } from 'react'
+import { Alert, Linking } from 'react-native'
 import { useAuth } from '~/components/auth-context'
-import { Separator } from '~/components/separator'
-import { Text } from '~/components/text'
 import { useTheme } from '~/components/theme-context'
 import { memberQuery } from '~/lib/queries'
 import { useDateFormatter } from '~/lib/use-date-formatter'
-import { alphaColor } from '~/theme'
 
 const WEBSITE_URL = 'https://www.lfc.se'
 
-// Leading inset for in-cell separators so they align under the row label,
-// past the leading icon (paddingHorizontal 16 + icon 20 + gap 12).
-const ROW_SEPARATOR_INSET = 48
-
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const appIcon = require('../../assets/icon.png') as number
+
+// SwiftUI's `Image` only renders SF Symbols or local file URIs, so bundled and
+// remote images have to be resolved to a `file://` path before they can be
+// shown. These hooks do that, falling back to `null` (→ an SF Symbol) until the
+// file is available.
+function useAssetUri(module: number): string | null {
+  const [uri, setUri] = useState<string | null>(null)
+
+  useEffect(() => {
+    let active = true
+    void Asset.fromModule(module)
+      .downloadAsync()
+      .then((asset) => {
+        if (active) {
+          setUri(asset.localUri ?? asset.uri)
+        }
+      })
+    return () => {
+      active = false
+    }
+  }, [module])
+
+  return uri
+}
+
+function useCachedImageUri(url: string | null | undefined): string | null {
+  const [uri, setUri] = useState<string | null>(null)
+
+  useEffect(() => {
+    let active = true
+    if (!url) {
+      setUri(null)
+      return
+    }
+
+    const toFileUri = (path: string | null) =>
+      path ? (path.startsWith('file://') ? path : `file://${path}`) : null
+
+    void ExpoImage.getCachePathAsync(url)
+      .then(async (path) => {
+        if (path) {
+          return path
+        }
+        // Not cached yet — pull it to disk, then resolve the file path.
+        await ExpoImage.prefetch(url, 'disk')
+        return ExpoImage.getCachePathAsync(url)
+      })
+      .then((path) => {
+        if (active) {
+          setUri(toFileUri(path))
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setUri(null)
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [url])
+
+  return uri
+}
 
 export function InfoScreen() {
   const theme = useTheme()
   const navigation = useNavigation()
   const version = Constants.expoConfig?.version ?? '1.0.0'
+  const appIconUri = useAssetUri(appIcon)
 
   return (
-    <ScrollView
-      contentInsetAdjustmentBehavior="automatic"
-      style={{ flex: 1, backgroundColor: theme.backgroundGrouped }}
+    <Host
+      style={{ flex: 1 }}
+      useViewportSizeMeasurement
+      modifiers={[tint(theme.foregroundAction)]}
     >
-      <View style={styles.header}>
-        <Image
-          source={appIcon}
-          style={[
-            styles.icon,
-            { backgroundColor: theme.backgroundBaseElevated },
-          ]}
-          contentFit="cover"
-        />
-        <Text variant="headingMedium" style={{ marginTop: 16 }}>
-          LFC.se
-        </Text>
-        <Text color="baseMuted" variant="bodySmall" style={{ marginTop: 4 }}>
-          Version {version}
-        </Text>
-      </View>
+      <Form>
+        <Section>
+          <HStack spacing={12}>
+            {appIconUri ? (
+              <Image
+                uiImage={appIconUri}
+                modifiers={[
+                  frame({ width: 56, height: 56 }),
+                  clipShape('roundedRectangle', 13),
+                ]}
+              />
+            ) : null}
+            <VStack alignment="leading" spacing={2}>
+              <Text>LFC.se</Text>
+              <Text modifiers={[foregroundStyle(theme.foregroundBaseMuted)]}>
+                Version {version}
+              </Text>
+            </VStack>
+          </HStack>
+        </Section>
 
-      <AccountSection />
+        <AccountSection />
 
-      <View
-        style={[
-          styles.section,
-          styles.settingsSection,
-          { backgroundColor: theme.backgroundGroupedElevated },
-        ]}
-      >
-        <Row
-          icon="bell"
-          label="Notiser"
-          onPress={() =>
-            navigation.navigate('Home', {
-              screen: 'Info',
-              params: { screen: 'Notifications' },
-            })
-          }
-        />
-      </View>
-
-      <View
-        style={[
-          styles.section,
-          { backgroundColor: theme.backgroundGroupedElevated },
-        ]}
-      >
-        <Row
-          icon="globe"
-          label="Besök lfc.se"
-          onPress={() => {
-            void Linking.openURL(WEBSITE_URL)
-          }}
-        />
-        <Separator inset={ROW_SEPARATOR_INSET} />
-        <Row
-          icon="square.and.arrow.up"
-          label="Dela appen"
-          onPress={async () => {
-            if (await Sharing.isAvailableAsync()) {
-              await Sharing.shareAsync(WEBSITE_URL)
-            } else {
-              void Linking.openURL(WEBSITE_URL)
+        <Section>
+          <Button
+            systemImage="bell"
+            label="Notiser"
+            onPress={() =>
+              navigation.navigate('Home', {
+                screen: 'Info',
+                params: { screen: 'Notifications' },
+              })
             }
-          }}
-        />
-      </View>
+          />
+        </Section>
 
-      <Text color="baseMuted" variant="captionLarge" style={styles.footer}>
-        En inofficiell app för Liverpool-supportrar i Sverige. Allt
-        nyhetsinnehåll tillhör respektive upphovsman.
-      </Text>
-    </ScrollView>
+        <Section
+          footer={
+            <Text>
+              En inofficiell app för Liverpool-supportrar i Sverige. Allt
+              nyhetsinnehåll tillhör respektive upphovsman.
+            </Text>
+          }
+        >
+          <Button
+            systemImage="globe"
+            label="Besök lfc.se"
+            onPress={() => void Linking.openURL(WEBSITE_URL)}
+          />
+          <Button
+            systemImage="square.and.arrow.up"
+            label="Dela appen"
+            onPress={async () => {
+              if (await Sharing.isAvailableAsync()) {
+                await Sharing.shareAsync(WEBSITE_URL)
+              } else {
+                void Linking.openURL(WEBSITE_URL)
+              }
+            }}
+          />
+        </Section>
+      </Form>
+    </Host>
   )
 }
 
@@ -124,22 +187,17 @@ function AccountSection() {
   })
 
   const { data: member } = useQuery(memberQuery(session?.token))
+  const avatarUri = useCachedImageUri(member?.avatarUrl)
 
   if (!session) {
     return (
-      <View
-        style={[
-          styles.section,
-          styles.accountSection,
-          { backgroundColor: theme.backgroundGroupedElevated },
-        ]}
-      >
-        <Row
-          icon="person.crop.circle"
+      <Section>
+        <Button
+          systemImage="person.crop.circle"
           label="Logga in"
           onPress={() => navigation.navigate('Login')}
         />
-      </View>
+      </Section>
     )
   }
 
@@ -155,201 +213,44 @@ function AccountSection() {
   }
 
   return (
-    <View
-      style={[
-        styles.section,
-        styles.accountSection,
-        { backgroundColor: theme.backgroundGroupedElevated },
-      ]}
-    >
-      <View style={styles.account}>
-        {member?.avatarUrl ? (
+    <Section>
+      <HStack spacing={12}>
+        {avatarUri ? (
           <Image
-            source={{ uri: member.avatarUrl }}
-            style={styles.avatar}
-            contentFit="cover"
+            uiImage={avatarUri}
+            modifiers={[frame({ width: 48, height: 48 }), clipShape('circle')]}
           />
         ) : (
-          <View
-            style={[
-              styles.avatar,
-              styles.avatarFallback,
-              { backgroundColor: theme.backgroundBaseElevated },
-            ]}
-          >
-            <SFSymbol
-              name="person.fill"
-              weight="regular"
-              scale="small"
-              colors={[theme.foregroundBaseMuted]}
-              size={22}
-            />
-          </View>
+          <Image
+            systemName="person.crop.circle.fill"
+            size={48}
+            color={theme.foregroundBaseMuted}
+          />
         )}
-        <View style={{ flex: 1 }}>
-          <Text variant="headingXSmall">
-            {member?.name ?? session.username}
-          </Text>
-          <Text color="baseMuted" variant="bodySmall">
+        <VStack alignment="leading" spacing={2}>
+          <Text>{member?.name ?? session.username}</Text>
+          <Text modifiers={[foregroundStyle(theme.foregroundBaseMuted)]}>
             @{member?.username ?? session.username}
           </Text>
-        </View>
-      </View>
+        </VStack>
+      </HStack>
 
       {member?.expirationDate ? (
-        <>
-          <Separator inset={16} />
-          <View style={styles.membership}>
-            <View style={{ flex: 1 }}>
-              <Text variant="bodyMedium">Medlemskap</Text>
-              <Text
-                color="baseMuted"
-                variant="bodySmall"
-                style={{ marginTop: 2 }}
-              >
-                Giltigt till {dateFormatter.format(member.expirationDate)}
-              </Text>
-            </View>
-            {member.daysLeft <= 30 ? (
-              <View
-                style={[
-                  styles.badge,
-                  { backgroundColor: alphaColor(theme.foregroundAction, 0.12) },
-                ]}
-              >
-                <Text
-                  variant="captionMedium"
-                  style={{ color: theme.foregroundAction }}
-                >
-                  {member.daysLeft} dagar kvar
-                </Text>
-              </View>
-            ) : null}
-          </View>
-        </>
+        <LabeledContent label="Medlemskap">
+          <Text>
+            {member.daysLeft <= 30
+              ? `${member.daysLeft} dagar kvar`
+              : `Giltigt till ${dateFormatter.format(member.expirationDate)}`}
+          </Text>
+        </LabeledContent>
       ) : null}
 
-      <Separator inset={ROW_SEPARATOR_INSET} />
-      <Row
-        icon="rectangle.portrait.and.arrow.right"
+      <Button
+        role="destructive"
+        systemImage="rectangle.portrait.and.arrow.right"
         label="Logga ut"
         onPress={handleSignOut}
-        destructive
       />
-    </View>
+    </Section>
   )
 }
-
-interface RowProps {
-  icon: SFSymbolName
-  label: string
-  onPress: () => void
-  actionLabel?: string
-  destructive?: boolean
-}
-
-function Row({ icon, label, onPress, actionLabel, destructive }: RowProps) {
-  const theme = useTheme()
-
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.row,
-        pressed && { backgroundColor: theme.backgroundHighlighted },
-      ]}
-    >
-      <SFSymbol
-        name={icon}
-        weight="regular"
-        scale="small"
-        colors={[theme.foregroundAction]}
-        size={20}
-      />
-      <Text
-        variant="bodyMedium"
-        color={destructive ? 'action' : 'base'}
-        style={{ flex: 1 }}
-      >
-        {label}
-      </Text>
-      {actionLabel ? (
-        <Text variant="bodyMedium" style={{ color: theme.foregroundAction }}>
-          {actionLabel}
-        </Text>
-      ) : destructive ? null : (
-        <SFSymbol
-          name="chevron.right"
-          weight="semibold"
-          scale="small"
-          colors={[theme.foregroundBaseMuted]}
-          size={14}
-        />
-      )}
-    </Pressable>
-  )
-}
-
-const styles = StyleSheet.create({
-  header: {
-    alignItems: 'center',
-    paddingTop: 24,
-    paddingBottom: 32,
-  },
-  icon: {
-    width: 96,
-    height: 96,
-    borderRadius: 22,
-    overflow: 'hidden',
-  },
-  section: {
-    marginHorizontal: 17,
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
-  accountSection: {
-    marginBottom: 16,
-  },
-  settingsSection: {
-    marginBottom: 16,
-  },
-  account: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    padding: 16,
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-  },
-  avatarFallback: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  membership: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-  },
-  badge: {
-    borderRadius: 999,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-  },
-  footer: {
-    paddingHorizontal: 17,
-    paddingTop: 24,
-    textAlign: 'center',
-  },
-})
