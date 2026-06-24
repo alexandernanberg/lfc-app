@@ -133,8 +133,10 @@ export async function enableNewPostNotifications(): Promise<boolean> {
   const isRegistered = await TaskManager.isTaskRegisteredAsync(BACKGROUND_TASK)
   if (!isRegistered) {
     await BackgroundTask.registerTaskAsync(BACKGROUND_TASK, {
-      // OS-enforced floor is 15 min; treated as a minimum, not a guarantee.
-      minimumInterval: 15,
+      // Requested cadence. This is a floor the OS may *raise*, never lower:
+      // iOS/Android won't wake a background task more often than ~15 min
+      // regardless, so in practice runs land no tighter than that.
+      minimumInterval: 5,
     })
   }
 
