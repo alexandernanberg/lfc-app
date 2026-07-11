@@ -1,0 +1,44 @@
+# Free scheduler for the notifications backend, for when Vercel Cron isn't
+# available (Hobby plan only allows daily crons). This pings the deployed
+# /cron/poll endpoint on a schedule so it checks lfc.se for new articles and
+# pushes them out.
+#
+# Setup:
+#   - Repo variable  NOTIFICATIONS_URL  = https://<your-app>.vercel.app
+#   - Repo secret     CRON_SECRET        = same value set in Vercel
+#
+# Note: GitHub only runs scheduled workflows from the default branch, and it
+# throttles/queues cron runs (real interval is often longer than requested) and
+# disables schedules after ~60 days of repo inactivity. For punctual delivery
+# prefer Upstash QStash (see apps/notifications/README.md).
+name: Poll for new articles
+
+on:
+  schedule:
+    - cron: '*/5 * * * *' # every 5 minutes (best-effort)
+  workflow_dispatch: {} # allow manual runs
+
+concurrency:
+  group: poll-notifications
+  cancel-in-progress: false
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger poll
+        env:
+          NOTIFICATIONS_URL: ${{ vars.NOTIFICATIONS_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$NOTIFICATIONS_URL" ]; then
+            echo "::error::Set the NOTIFICATIONS_URL repository variable."
+            exit 1
+          fi
+          code=$(curl -sS -o /tmp/body -w '%{http_code}' \
+            -X POST "${NOTIFICATIONS_URL%/}/cron/poll" \
+            -H "Authorization: Bearer ${CRON_SECRET}")
+          echo "HTTP $code"
+          cat /tmp/body
+          echo
+          [ "$code" -ge 200 ] && [ "$code" -lt 300 ]
