@@ -2,8 +2,14 @@ import { Redis } from '@upstash/redis'
 import type { Env } from './env'
 
 /**
- * Persistence the notification service needs: the set of device push tokens to
- * notify, and a marker of the newest article we've already announced.
+ * Persistence the notification service needs: the set of device push tokens,
+ * and per-article "already announced" claims used to make polling idempotent.
+ *
+ * Idempotency is keyed off the article id (not a single timestamp marker) via
+ * an atomic {@link Store.claimPost claim}: only the caller that first claims an
+ * id notifies for it, so two concurrent polls can't double-notify, and a failed
+ * send can be rolled back with {@link Store.releasePost} so the next poll
+ * retries instead of silently dropping it.
  */
 export interface Store {
   /** Register a device push token (idempotent). */
@@ -12,14 +18,27 @@ export interface Store {
   removeDevice(token: string): Promise<void>
   /** All currently-registered device push tokens. */
   listDevices(): Promise<string[]>
-  /** ISO publish time of the newest article already announced, if any. */
-  getLastSeen(): Promise<string | null>
-  /** Persist the newest-announced marker. */
-  setLastSeen(iso: string): Promise<void>
+  /** Whether the initial seed (record current articles without notifying) ran. */
+  isSeeded(): Promise<boolean>
+  /** Mark the initial seed as done. */
+  markSeeded(): Promise<void>
+  /**
+   * Atomically claim an article id for notification. Returns `true` only for
+   * the first caller to claim it; subsequent callers get `false`. Claims expire
+   * after a while so the keyspace stays bounded.
+   */
+  claimPost(id: string): Promise<boolean>
+  /** Release a previously-claimed id so a later poll can retry it. */
+  releasePost(id: string): Promise<void>
 }
 
 const DEVICES_KEY = 'lfc:devices'
-const LAST_SEEN_KEY = 'lfc:last-seen'
+const SEEDED_KEY = 'lfc:seeded'
+const CLAIM_PREFIX = 'lfc:sent:'
+// Claims self-expire so the keyspace stays bounded. Comfortably longer than any
+// article stays in the fetched list, so a claim never expires while the article
+// could still be re-detected as new.
+const CLAIM_TTL_SECONDS = 60 * 60 * 24 * 60 // 60 days
 
 /** Durable store backed by Upstash Redis (used in production on Vercel). */
 class RedisStore implements Store {
@@ -37,12 +56,25 @@ class RedisStore implements Store {
     return this.redis.smembers(DEVICES_KEY)
   }
 
-  async getLastSeen(): Promise<string | null> {
-    return this.redis.get<string>(LAST_SEEN_KEY)
+  async isSeeded(): Promise<boolean> {
+    return (await this.redis.get<string>(SEEDED_KEY)) !== null
   }
 
-  async setLastSeen(iso: string): Promise<void> {
-    await this.redis.set(LAST_SEEN_KEY, iso)
+  async markSeeded(): Promise<void> {
+    await this.redis.set(SEEDED_KEY, '1')
+  }
+
+  async claimPost(id: string): Promise<boolean> {
+    // SET NX is atomic: exactly one concurrent caller gets 'OK'.
+    const res = await this.redis.set(`${CLAIM_PREFIX}${id}`, '1', {
+      nx: true,
+      ex: CLAIM_TTL_SECONDS,
+    })
+    return res === 'OK'
+  }
+
+  async releasePost(id: string): Promise<void> {
+    await this.redis.del(`${CLAIM_PREFIX}${id}`)
   }
 }
 
@@ -52,7 +84,8 @@ class RedisStore implements Store {
  */
 class MemoryStore implements Store {
   private readonly devices = new Set<string>()
-  private lastSeen: string | null = null
+  private readonly claimed = new Set<string>()
+  private seeded = false
 
   addDevice(token: string): Promise<void> {
     this.devices.add(token)
@@ -68,40 +101,44 @@ class MemoryStore implements Store {
     return Promise.resolve([...this.devices])
   }
 
-  getLastSeen(): Promise<string | null> {
-    return Promise.resolve(this.lastSeen)
+  isSeeded(): Promise<boolean> {
+    return Promise.resolve(this.seeded)
   }
 
-  setLastSeen(iso: string): Promise<void> {
-    this.lastSeen = iso
+  markSeeded(): Promise<void> {
+    this.seeded = true
+    return Promise.resolve()
+  }
+
+  claimPost(id: string): Promise<boolean> {
+    if (this.claimed.has(id)) {
+      return Promise.resolve(false)
+    }
+    this.claimed.add(id)
+    return Promise.resolve(true)
+  }
+
+  releasePost(id: string): Promise<void> {
+    this.claimed.delete(id)
     return Promise.resolve()
   }
 }
 
-let cached: Store | null = null
-
 /**
- * Return the process-wide {@link Store}, picking Upstash Redis when configured
- * and otherwise an in-memory fallback. Cached so a single serverless invocation
- * reuses one client.
+ * Build the {@link Store} for this env, picking Upstash Redis when configured
+ * and otherwise an in-memory fallback. Called once per app instance.
  */
-export function getStore(env: Env): Store {
-  if (cached) {
-    return cached
-  }
-
+export function createStore(env: Env): Store {
   if (env.upstashUrl && env.upstashToken) {
-    cached = new RedisStore(
+    return new RedisStore(
       new Redis({ url: env.upstashUrl, token: env.upstashToken }),
     )
-  } else {
-    console.warn(
-      '[notifications] UPSTASH_REDIS_REST_URL/TOKEN not set — using in-memory ' +
-        'store. Device tokens and the last-seen marker will not survive a ' +
-        'restart. Configure Upstash Redis for production.',
-    )
-    cached = new MemoryStore()
   }
 
-  return cached
+  console.warn(
+    '[notifications] UPSTASH_REDIS_REST_URL/TOKEN not set — using in-memory ' +
+      'store. Device tokens and sent-article claims will not survive a ' +
+      'restart. Configure Upstash Redis for production.',
+  )
+  return new MemoryStore()
 }

@@ -55,7 +55,7 @@ delivery. Setup and deployment: [`apps/notifications/README.md`](apps/notificati
    token with the backend (`POST /devices`).
 2. Vercel Cron hits the backend's `/cron/poll` on a schedule.
 3. The backend fetches the latest articles via `@lfc/api`, compares them to
-   the last-seen marker, and sends an Expo push for anything new.
+   the articles not yet announced, and sends an Expo push for each new one.
 4. The app receives the push and deep-links to the article on tap.
 
 If no backend is configured (`EXPO_PUBLIC_NOTIFICATIONS_API_URL` unset) or it's

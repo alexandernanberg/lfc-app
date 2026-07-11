@@ -2,14 +2,17 @@ import { serve } from '@hono/node-server'
 import { createApp } from './app'
 import { readEnv } from './env'
 import { pollAndNotify } from './poll'
-import { getStore } from './store'
+import { createStore } from './store'
 
 // Standalone Node server for local development. In production the app is served
 // by Vercel functions (see api/index.ts) and polled by Vercel Cron; this file
 // is only used when running `pnpm dev`.
 
 const env = readEnv()
-const app = createApp(env)
+// One store shared by the HTTP app and the poll loop below, so a device
+// registered over HTTP is visible to the local poll.
+const store = createStore(env)
+const app = createApp(env, store)
 const port = Number(process.env.PORT) || 8787
 
 serve({ fetch: app.fetch, port }, (info) => {
@@ -20,7 +23,6 @@ serve({ fetch: app.fetch, port }, (info) => {
 // LOCAL_POLL_MS is set (e.g. LOCAL_POLL_MS=60000). Off by default.
 const localPollMs = Number(process.env.LOCAL_POLL_MS)
 if (Number.isFinite(localPollMs) && localPollMs > 0) {
-  const store = getStore(env)
   console.log(`[notifications] local poll every ${localPollMs}ms`)
   setInterval(() => {
     pollAndNotify(store, env)

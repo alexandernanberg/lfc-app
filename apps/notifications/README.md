@@ -9,12 +9,15 @@ on-device background poll with prompt, server-driven delivery.
 - **Devices register** their [Expo push token](https://docs.expo.dev/push-notifications/overview/)
   via `POST /devices`. Tokens are stored in Redis.
 - **Vercel Cron** calls `GET /cron/poll` on a schedule.
-- Each poll fetches the latest articles from lfc.se (via `@lfc/api`), diffs
-  them against a stored "last seen" marker, and sends an
-  [Expo push](https://docs.expo.dev/push-notifications/sending-notifications/)
-  for anything new — pruning any tokens Expo reports as dead.
+- Each poll fetches the latest articles from lfc.se (via `@lfc/api`) and, for
+  any not yet announced, sends an
+  [Expo push](https://docs.expo.dev/push-notifications/sending-notifications/) —
+  pruning any tokens Expo reports as dead. An atomic per-article claim in Redis
+  makes this idempotent, so overlapping polls can't double-notify; a total send
+  failure rolls its claims back so the next poll retries instead of dropping the
+  article.
 
-The first poll only records the current newest article (no notifications), so
+The first poll only records the current articles (no notifications), so
 standing up the service doesn't blast the whole backlog.
 
 ## Endpoints

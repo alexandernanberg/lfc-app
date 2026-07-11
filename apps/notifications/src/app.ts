@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { readEnv, type Env } from './env'
 import { pollAndNotify } from './poll'
-import { getStore } from './store'
+import { createStore, type Store } from './store'
 
 /** Loose check that a string looks like an Expo push token. */
 function isExpoPushToken(value: unknown): value is string {
@@ -12,12 +12,15 @@ function isExpoPushToken(value: unknown): value is string {
 }
 
 /**
- * Build the Hono app. The runtime env is injected so tests can supply their own
- * and the Vercel/Node entrypoints share one definition.
+ * Build the Hono app. The runtime env is injected so tests can supply their
+ * own; the store can be passed in so a caller (e.g. the local dev server's
+ * poll loop) shares the exact same instance.
  */
-export function createApp(env: Env = readEnv()) {
+export function createApp(
+  env: Env = readEnv(),
+  store: Store = createStore(env),
+) {
   const app = new Hono()
-  const store = getStore(env)
 
   app.get('/', (c) =>
     c.json({

@@ -4,23 +4,36 @@ import type { Store } from './store'
 import { sendPushNotifications, type ExpoPushMessage } from './push'
 
 export interface PollResult {
-  /** First-ever run: we recorded the current newest without notifying. */
+  /** First-ever run: we recorded the current articles without notifying. */
   seeded: boolean
-  /** Number of articles detected as new since the last poll. */
+  /** Number of articles newly claimed for notification this poll. */
   newPosts: number
   /** Number of registered devices at poll time. */
   devices: number
-  /** Push messages actually sent. */
+  /** Push messages that Expo accepted. */
   sent: number
   /** Device tokens pruned because Expo reported them dead. */
   pruned: number
+  /** Claims rolled back after a total send failure, to retry next poll. */
+  rolledBack: number
+}
+
+const EMPTY: PollResult = {
+  seeded: false,
+  newPosts: 0,
+  devices: 0,
+  sent: 0,
+  pruned: 0,
+  rolledBack: 0,
 }
 
 /**
- * The core job, run on a schedule: fetch the latest articles, figure out what's
- * new since the last run, and fan a push notification out to every registered
- * device for each new article. Advances the last-seen marker before sending so
- * a send failure can't cause the same article to notify twice.
+ * The core job, run on a schedule: fetch the latest articles, atomically claim
+ * the ones not yet announced, and fan a push notification out to every
+ * registered device for each. The per-article claim (see {@link Store}) makes
+ * this idempotent — concurrent polls can't double-notify — and a total send
+ * failure rolls its claims back so the next poll retries instead of dropping
+ * the article.
  */
 export async function pollAndNotify(
   store: Store,
@@ -31,54 +44,47 @@ export async function pollAndNotify(
     items: env.pollItems,
   })
 
-  const empty: PollResult = {
-    seeded: false,
-    newPosts: 0,
-    devices: 0,
-    sent: 0,
-    pruned: 0,
-  }
-
   if (posts.length === 0) {
-    return empty
+    return EMPTY
   }
 
-  // fetchLatestPosts already sorts newest-first.
-  const newest = posts[0]!.publishedAt
-
-  const lastSeenRaw = await store.getLastSeen()
-  const lastSeen = lastSeenRaw ? new Date(lastSeenRaw) : null
-
-  // First run (or a corrupted marker): record the current newest without
-  // notifying, so standing up the service doesn't blast the whole backlog.
-  if (!lastSeen || Number.isNaN(lastSeen.getTime())) {
-    await store.setLastSeen(newest.toISOString())
-    return { ...empty, seeded: true }
+  // First run: claim the current articles without notifying, so standing up the
+  // service doesn't blast the whole backlog.
+  if (!(await store.isSeeded())) {
+    await Promise.all(posts.map((post) => store.claimPost(post.id)))
+    await store.markSeeded()
+    return { ...EMPTY, seeded: true }
   }
 
-  // Everything published strictly after the marker. Comparing by time (not
-  // list position) means the endpoint's pinned featured article can't hide the
-  // genuinely new posts behind it.
-  const fresh = posts
-    .filter((post) => post.publishedAt.getTime() > lastSeen.getTime())
-    .sort((a, b) => a.publishedAt.getTime() - b.publishedAt.getTime())
-
-  if (fresh.length === 0) {
-    return empty
+  // Claim candidates oldest-first (fetchLatestPosts sorts newest-first). Only
+  // ids we win the atomic claim for are ours to notify; anything already claimed
+  // by a previous or concurrent poll is skipped.
+  const ordered = [...posts].sort(
+    (a, b) => a.publishedAt.getTime() - b.publishedAt.getTime(),
+  )
+  const claimed: NewsPost[] = []
+  for (const post of ordered) {
+    if (await store.claimPost(post.id)) {
+      claimed.push(post)
+    }
   }
 
-  // Advance the marker up front: if the push send below fails we'd rather drop
-  // a notification than re-notify the same article on the next poll.
-  await store.setLastSeen(newest.toISOString())
-
-  // Oldest-first and capped so a long gap can't flood the tray; the newest
-  // article ends up most recent in the notification list.
-  const toNotify = fresh.slice(-env.maxNotificationsPerPoll)
+  if (claimed.length === 0) {
+    return EMPTY
+  }
 
   const devices = await store.listDevices()
   if (devices.length === 0) {
-    return { ...empty, newPosts: fresh.length }
+    // Nothing to notify. Claims stand so a device that registers later doesn't
+    // receive the backlog — matching "only notify articles published while
+    // subscribed".
+    return { ...EMPTY, newPosts: claimed.length }
   }
+
+  // Cap so a long gap can't flood the tray, keeping the newest. Guard against a
+  // 0/negative cap, where `slice(-0)` would otherwise return the whole array.
+  const cap = Math.max(0, env.maxNotificationsPerPoll)
+  const toNotify = cap === 0 ? [] : claimed.slice(-cap)
 
   const messages: ExpoPushMessage[] = []
   for (const post of toNotify) {
@@ -90,6 +96,13 @@ export async function pollAndNotify(
   const results = await sendPushNotifications(messages, {
     accessToken: env.expoAccessToken,
   })
+
+  // Total failure (Expo/network down): nothing got through. Roll the claims back
+  // so the next poll retries these articles rather than losing them.
+  if (messages.length > 0 && !results.some((r) => r.ok)) {
+    await Promise.all(toNotify.map((post) => store.releasePost(post.id)))
+    return { ...EMPTY, newPosts: claimed.length, rolledBack: toNotify.length }
+  }
 
   // Prune tokens Expo says are gone (app uninstalled, token rotated) so we stop
   // trying to reach them.
@@ -104,8 +117,8 @@ export async function pollAndNotify(
   }
 
   return {
-    seeded: false,
-    newPosts: fresh.length,
+    ...EMPTY,
+    newPosts: claimed.length,
     devices: devices.length,
     sent: results.filter((r) => r.ok).length,
     pruned: dead.size,
