@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.15.0",
-    "@lfc/shared": "workspace:*",
+    "@lfc/api": "workspace:*",
     "@upstash/redis": "^1.35.0",
     "hono": "^4.9.0"
   },

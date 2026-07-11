@@ -15,7 +15,7 @@ apps/
   mobile          @lfc/mobile        Expo / React Native app
   notifications   @lfc/notifications Hono backend that pushes new-article alerts (Vercel)
 packages/
-  shared          @lfc/shared        Framework-agnostic news fetching + types
+  api             @lfc/api           Transport-agnostic lfc.se API client + types
 ```
 
 ## Getting started
@@ -54,7 +54,7 @@ delivery. Setup and deployment: [`apps/notifications/README.md`](apps/notificati
 1. On launch (with notifications enabled) the mobile app registers its Expo push
    token with the backend (`POST /devices`).
 2. Vercel Cron hits the backend's `/cron/poll` on a schedule.
-3. The backend fetches the latest articles via `@lfc/shared`, compares them to
+3. The backend fetches the latest articles via `@lfc/api`, compares them to
    the last-seen marker, and sends an Expo push for anything new.
 4. The app receives the push and deep-links to the article on tap.
 

@@ -16,6 +16,7 @@
   "dependencies": {
     "@expo/dom-webview": "^56.0.5",
     "@legendapp/list": "^2.0.19",
+    "@lfc/api": "workspace:*",
     "@native-html/iframe-plugin": "^2.6.1",
     "@react-native-cookies/cookies": "^6.2.1",
     "@react-navigation/bottom-tabs": "^7.18.0",

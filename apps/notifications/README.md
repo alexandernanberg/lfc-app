@@ -9,7 +9,7 @@ on-device background poll with prompt, server-driven delivery.
 - **Devices register** their [Expo push token](https://docs.expo.dev/push-notifications/overview/)
   via `POST /devices`. Tokens are stored in Redis.
 - **Vercel Cron** calls `GET /cron/poll` on a schedule.
-- Each poll fetches the latest articles from lfc.se (via `@lfc/shared`), diffs
+- Each poll fetches the latest articles from lfc.se (via `@lfc/api`), diffs
   them against a stored "last seen" marker, and sends an
   [Expo push](https://docs.expo.dev/push-notifications/sending-notifications/)
   for anything new — pruning any tokens Expo reports as dead.

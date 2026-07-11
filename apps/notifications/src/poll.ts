@@ -1,4 +1,4 @@
-import { fetchLatestPosts, type NewsPost } from '@lfc/shared'
+import { fetchLatestPosts, type NewsPost } from '@lfc/api'
 import type { Env } from './env'
 import type { Store } from './store'
 import { sendPushNotifications, type ExpoPushMessage } from './push'

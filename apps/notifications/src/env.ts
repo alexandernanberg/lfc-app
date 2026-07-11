@@ -1,4 +1,4 @@
-import { DEFAULT_API_URL } from '@lfc/shared'
+import { DEFAULT_API_URL } from '@lfc/api'
 
 /**
  * Runtime configuration, read from environment variables. Everything has a sane
