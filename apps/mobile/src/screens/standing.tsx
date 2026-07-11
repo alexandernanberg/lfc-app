@@ -133,9 +133,7 @@ function Row({ row, total, isLast }: RowProps) {
         },
       ]}
     >
-      {accent && (
-        <View style={[styles.accent, { backgroundColor: accent }]} />
-      )}
+      {accent && <View style={[styles.accent, { backgroundColor: accent }]} />}
 
       {!isLast && (
         <View
@@ -168,13 +166,7 @@ function Row({ row, total, isLast }: RowProps) {
   )
 }
 
-function Stat({
-  value,
-  points,
-}: {
-  value: number | string
-  points?: boolean
-}) {
+function Stat({ value, points }: { value: number | string; points?: boolean }) {
   return (
     <Text
       variant="bodySmall"

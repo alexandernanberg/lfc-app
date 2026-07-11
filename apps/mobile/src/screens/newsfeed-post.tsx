@@ -32,8 +32,8 @@ import { Separator } from '~/components/separator'
 import { Text } from '~/components/text'
 import { useTheme } from '~/components/theme-context'
 import { TweetEmbed } from '~/components/twitter-embed'
-import { queryClient } from '~/lib/query-client'
 import { postCommentsQuery, postQuery } from '~/lib/queries'
+import { queryClient } from '~/lib/query-client'
 import { DistanceTime } from '~/lib/use-relative-time-formatter'
 import { textStyles } from '~/theme'
 
@@ -229,7 +229,10 @@ const customHTMLElementModels = {
 
 // Recursively flip a comment's like state within the (nested) comment tree,
 // adjusting the like count to match. Used for optimistic updates.
-function toggleLike(comments: Array<Comment>, commentId: string): Array<Comment> {
+function toggleLike(
+  comments: Array<Comment>,
+  commentId: string,
+): Array<Comment> {
   return comments.map((comment) => {
     if (comment.id === commentId) {
       return {

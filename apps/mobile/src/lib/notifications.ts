@@ -1,19 +1,25 @@
 import * as BackgroundTask from 'expo-background-task'
+import Constants from 'expo-constants'
 import * as Notifications from 'expo-notifications'
 import * as SecureStore from 'expo-secure-store'
 import * as TaskManager from 'expo-task-manager'
 import { listPosts } from '~/api'
+import { config } from '~/config'
 
 ///////////////////////////////////////////////////////////
 // New-article notifications
 ///////////////////////////////////////////////////////////
 //
-// There is no backend to push from, so this works entirely client-side: an OS
-// background task periodically wakes the app, polls the existing news API, and
-// fires a *local* notification for anything published since the last check. The
-// OS controls when the task actually runs (a ~15min floor, and it may defer for
-// long stretches when the app is rarely opened), so this is best-effort — good
-// enough for "new article posted", not for instant goal alerts.
+// Primary path: the notifications backend (apps/notifications) polls the news
+// API server-side and pushes to us via Expo. We just register this device's
+// Expo push token with it (registerDeviceForPush) — delivery is then prompt and
+// doesn't depend on the app being woken.
+//
+// Fallback path: when no backend is configured (EXPO_PUBLIC_NOTIFICATIONS_API_URL
+// unset) or it's unreachable, an OS background task periodically wakes the app,
+// polls the news API, and fires a *local* notification for anything new. The OS
+// controls when that task runs (a ~15min floor, often deferred), so it's
+// best-effort — the server push is what makes notifications timely.
 
 // Stable identifier the OS uses to invoke the headless task — must not change
 // across releases or previously-registered tasks orphan.
@@ -28,6 +34,9 @@ const BACKGROUND_TASK = 'lfc-check-new-posts'
 const LAST_SEEN_KEY = 'notifications-last-seen-published-at'
 // User's on/off preference for new-article notifications. Defaults to on.
 const ENABLED_KEY = 'notifications-enabled'
+// The Expo push token last registered with the backend. Stored so we can
+// unregister exactly that token later and skip re-posting an unchanged one.
+const PUSH_TOKEN_KEY = 'notifications-push-token'
 // Cap notifications per wakeup so a long offline gap can't flood the tray.
 const MAX_NOTIFICATIONS = 5
 
@@ -133,10 +142,17 @@ export async function enableNewPostNotifications(): Promise<boolean> {
     return false
   }
 
-  // Background App Refresh disabled at the OS level — nothing we can register.
+  // Primary path: hand our push token to the backend so it can push directly.
+  // Best-effort — a failure here just leaves us relying on the fallback below.
+  await registerDeviceForPush()
+
+  // Fallback path: the on-device background poll. Still registered so
+  // notifications keep working when the backend is unset or unreachable.
   const status = await BackgroundTask.getStatusAsync()
   if (status === BackgroundTask.BackgroundTaskStatus.Restricted) {
-    return false
+    // Background App Refresh disabled at the OS level — nothing to register, but
+    // server push (if configured) still works, so notifications aren't dead.
+    return true
   }
 
   const isRegistered = await TaskManager.isTaskRegisteredAsync(BACKGROUND_TASK)
@@ -150,11 +166,93 @@ export async function enableNewPostNotifications(): Promise<boolean> {
   return true
 }
 
-/** Tear down the background check (e.g. from the settings toggle). */
+/** Tear down both notification paths (e.g. from the settings toggle). */
 export async function disableNewPostNotifications(): Promise<void> {
+  await unregisterDeviceForPush()
   if (await TaskManager.isTaskRegisteredAsync(BACKGROUND_TASK)) {
     await BackgroundTask.unregisterTaskAsync(BACKGROUND_TASK)
   }
+}
+
+/** Backend base URL, trailing slash trimmed, or null when not configured. */
+function notificationsApiUrl(): string | null {
+  const url = config.get('notificationsApiUrl')
+  return url ? url.replace(/\/+$/, '') : null
+}
+
+/**
+ * Obtain this device's Expo push token. Returns null off a real device / dev
+ * build (e.g. simulators can't mint one) or when the EAS projectId is missing,
+ * so callers can degrade gracefully to the on-device fallback.
+ */
+async function getExpoPushToken(): Promise<string | null> {
+  const eas = Constants.expoConfig?.extra?.eas as
+    | { projectId?: string }
+    | undefined
+  const projectId = eas?.projectId
+  if (!projectId) {
+    return null
+  }
+  try {
+    const { data } = await Notifications.getExpoPushTokenAsync({ projectId })
+    return data
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Register this device's Expo push token with the notifications backend so it
+ * receives server-driven pushes. No-ops when no backend is configured. Skips the
+ * network call when the token is unchanged, and is best-effort — a failure never
+ * throws, it just falls back to the on-device background poll.
+ */
+export async function registerDeviceForPush(): Promise<void> {
+  const apiUrl = notificationsApiUrl()
+  if (!apiUrl) {
+    return
+  }
+  const token = await getExpoPushToken()
+  if (!token) {
+    return
+  }
+  const existing = await SecureStore.getItemAsync(PUSH_TOKEN_KEY)
+  if (existing === token) {
+    return
+  }
+  try {
+    const res = await fetch(`${apiUrl}/devices`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    })
+    if (res.ok) {
+      await SecureStore.setItemAsync(PUSH_TOKEN_KEY, token)
+    }
+  } catch {
+    // Offline or backend down — the fallback poll still covers us.
+  }
+}
+
+/**
+ * Tell the backend to stop pushing to this device and forget the stored token.
+ * Best-effort; the local marker is cleared regardless so we don't get stuck.
+ */
+export async function unregisterDeviceForPush(): Promise<void> {
+  const apiUrl = notificationsApiUrl()
+  const token = await SecureStore.getItemAsync(PUSH_TOKEN_KEY)
+  if (apiUrl && token) {
+    try {
+      await fetch(`${apiUrl}/devices`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      })
+    } catch {
+      // ignore — we still clear the local marker below
+    }
+  }
+  await SecureStore.deleteItemAsync(PUSH_TOKEN_KEY)
 }
 
 /** Whether the user wants new-article notifications. Defaults to on. */

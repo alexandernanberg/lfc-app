@@ -8,8 +8,8 @@ import {
 } from 'react'
 import type { Session } from '~/api'
 import { login, logout, setSessionToken, setUnauthorizedHandler } from '~/api'
-import { queryClient } from '~/lib/query-client'
 import { memberQuery } from '~/lib/queries'
+import { queryClient } from '~/lib/query-client'
 import { clearSession, loadSession, saveSession } from '~/lib/session-store'
 
 ///////////////////////////////////////////////////////////
