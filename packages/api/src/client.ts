@@ -17,19 +17,15 @@ import {
 // Request layer
 ///////////////////////////////////////////////////////////
 //
-// The provider authenticates requests with the `lfc-se` session cookie. How
-// that cookie rides along differs per platform, and that's the *only*
-// platform-specific part of talking to the API — so the client delegates it:
+// Authenticated requests carry the `lfc-se` session cookie. On mobile that
+// cookie lives in the native cookie store and is attached automatically by
+// `credentials: 'include'` (a manually set `Cookie` header is silently dropped
+// on iOS, so we rely on the store rather than setting it ourselves). Managing
+// that cookie is the caller's job — the client just needs `credentials`.
 //
-//   • React Native / browser: the cookie lives in the native cookie store and
-//     is attached automatically by `credentials: 'include'`. (On iOS a manually
-//     set `Cookie` header is silently dropped, which is why we rely on the
-//     store rather than setting the header ourselves.)
-//   • Server (no cookie jar): pass `getSessionToken` and the client sends the
-//     session as an explicit `Cookie: lfc-se=<token>` header instead.
-//
-// Everything else — building requests, parsing responses — is portable, so the
-// same client backs both the mobile app and the notifications backend.
+// The notifications backend only ever calls public endpoints, so it needs no
+// auth at all. Everything here — building requests, parsing responses — is
+// portable, so the same client backs both.
 
 export interface ClientConfig {
   /** API base URL, e.g. `https://www.lfc.se/webapi`. */
@@ -43,12 +39,6 @@ export interface ClientConfig {
    * source compiles in Node consumers without the DOM lib.
    */
   credentials?: 'omit' | 'same-origin' | 'include'
-  /**
-   * Supplies the session token for environments without a cookie jar (server).
-   * When it returns a value the client sends it as a `Cookie: lfc-se=<token>`
-   * header. Omit on mobile — the native store handles it.
-   */
-  getSessionToken?: () => string | null | undefined
   /**
    * Called whenever a request returns 401 (session expired or revoked
    * server-side). Centralising it here means every authenticated endpoint logs
@@ -90,10 +80,6 @@ export function createClient(config: ClientConfig) {
     const headers: Record<string, string> = {}
     if (options.body !== undefined) {
       headers['Content-Type'] = 'application/json'
-    }
-    const token = config.getSessionToken?.()
-    if (token) {
-      headers['Cookie'] = `lfc-se=${token}`
     }
 
     const res = await fetchImpl(url.toString(), {

@@ -1,0 +1,133 @@
+import type { Session } from '@lfc/api'
+import CookieManager from '@react-native-cookies/cookies'
+import * as SecureStore from 'expo-secure-store'
+import { config } from '~/config'
+
+///////////////////////////////////////////////////////////
+// Session — single source of truth for the auth session
+///////////////////////////////////////////////////////////
+//
+// One module owns the session token in every place it has to live:
+//   • SecureStore          — durable persistence across launches
+//   • the native cookie store — how the token actually rides on API requests
+//     (`credentials: 'include'`); a hand-set `Cookie` header is dropped on iOS,
+//     so the cookie store is the only viable transport there
+//   • an in-memory snapshot — what the UI reads via `useSyncExternalStore`
+//
+// Every mutation goes through setSession/clearSession, which update all three
+// together, so they can never drift out of sync. Consumers never touch the
+// cookie store or SecureStore directly.
+
+const SESSION_KEY = 'provider-session'
+const COOKIE_ORIGIN = new URL(config.get('apiUrl')).origin
+
+/** JSON-serialisable form of a {@link Session} (Dates as ISO strings). */
+interface StoredSession {
+  token: string
+  memberId: string
+  username: string
+  validThru: string | null
+  domain: string | null
+}
+
+let current: Session | null = null
+const listeners = new Set<() => void>()
+
+function emit() {
+  for (const listener of listeners) {
+    listener()
+  }
+}
+
+/** Subscribe to session changes (for `useSyncExternalStore`). */
+export function subscribeSession(listener: () => void) {
+  listeners.add(listener)
+  return () => {
+    listeners.delete(listener)
+  }
+}
+
+/** The current session, or null when logged out (for `useSyncExternalStore`). */
+export function getSession(): Session | null {
+  return current
+}
+
+// Write (or clear) the transport cookie. The native store is the only place a
+// cookie can live on iOS, so this is how the token reaches the API.
+async function writeCookie(token: string | null) {
+  if (token) {
+    await CookieManager.set(COOKIE_ORIGIN, {
+      name: 'lfc-se',
+      value: token,
+      path: '/',
+    })
+  } else {
+    await CookieManager.clearAll()
+  }
+}
+
+function serialize(session: Session): StoredSession {
+  return {
+    token: session.token,
+    memberId: session.memberId,
+    username: session.username,
+    validThru: session.validThru ? session.validThru.toISOString() : null,
+    domain: session.domain,
+  }
+}
+
+function deserialize(stored: StoredSession): Session {
+  return {
+    token: stored.token,
+    memberId: stored.memberId,
+    username: stored.username,
+    validThru: stored.validThru ? new Date(stored.validThru) : null,
+    domain: stored.domain,
+  }
+}
+
+/**
+ * Restore the persisted session once, at startup: hydrate the in-memory
+ * snapshot and prime the cookie so the first authenticated request has it.
+ * Returns the restored session, or null when there's none / it's corrupt.
+ */
+export async function restoreSession(): Promise<Session | null> {
+  const raw = await SecureStore.getItemAsync(SESSION_KEY)
+  if (!raw) {
+    return null
+  }
+
+  let stored: StoredSession
+  try {
+    stored = JSON.parse(raw) as StoredSession
+  } catch {
+    // Corrupted entry, treat as logged out.
+    await SecureStore.deleteItemAsync(SESSION_KEY)
+    return null
+  }
+
+  const session = deserialize(stored)
+  await writeCookie(session.token)
+  current = session
+  emit()
+  return session
+}
+
+/** Persist and activate a session (after sign-in). */
+export async function setSession(session: Session): Promise<void> {
+  await writeCookie(session.token)
+  await SecureStore.setItemAsync(
+    SESSION_KEY,
+    JSON.stringify(serialize(session)),
+  )
+  current = session
+  emit()
+}
+
+/** Tear down the session everywhere (sign-out or a server-side 401). */
+export async function clearSession(): Promise<void> {
+  await writeCookie(null)
+  await SecureStore.deleteItemAsync(SESSION_KEY)
+  current = null
+  emit()
+}
