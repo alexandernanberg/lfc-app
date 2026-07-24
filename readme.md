@@ -53,7 +53,7 @@ delivery. Setup and deployment: [`apps/notifications/README.md`](apps/notificati
 
 1. On launch (with notifications enabled) the mobile app registers its Expo push
    token with the backend (`POST /devices`).
-2. Vercel Cron hits the backend's `/cron/poll` on a schedule.
+2. Inngest runs the backend's poll function on a schedule (every 5 min).
 3. The backend fetches the latest articles via `@lfc/api`, compares them to
    the articles not yet announced, and sends an Expo push for each new one.
 4. The app receives the push and deep-links to the article on tap.

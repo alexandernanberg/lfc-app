@@ -8,13 +8,13 @@ on-device background poll with prompt, server-driven delivery.
 
 - **Devices register** their [Expo push token](https://docs.expo.dev/push-notifications/overview/)
   via `POST /devices`. Tokens are stored in Redis.
-- **`/cron/poll`** is called on a schedule. Each poll fetches the latest articles
-  from lfc.se (via `@lfc/api`) and, for any not yet announced, sends an
+- **`poll-news`** runs every 5 min. Each poll fetches the latest articles from
+  lfc.se (via `@lfc/api`) and, for any not yet announced, sends an
   [Expo push](https://docs.expo.dev/push-notifications/sending-notifications/).
   An atomic per-article claim in Redis makes this idempotent, so overlapping
-  polls can't double-notify; a total send failure rolls its claims back so the
-  next poll retries instead of dropping the article.
-- **`/cron/receipts`** is called on a (slower) schedule to prune dead tokens.
+  polls can't double-notify; an article that reached no device has its claim
+  released so the next poll retries it rather than dropping it.
+- **`reap-dead-tokens`** runs every 30 min to prune dead tokens.
   Sending only yields a _ticket_ (accepted); a token that has gone dead is
   reported later in the _delivery receipt_. This pass looks up the receipts for
   accepted pushes and removes any token Expo reports as `DeviceNotRegistered`.
@@ -24,13 +24,18 @@ standing up the service doesn't blast the whole backlog.
 
 ## Endpoints
 
-| Method   | Path             | Description                                                 |
-| -------- | ---------------- | ----------------------------------------------------------- |
-| `GET`    | `/`              | Health check + which storage backend is active.             |
-| `POST`   | `/devices`       | Register an Expo push token. Body: `{ "token": "..." }`.    |
-| `DELETE` | `/devices`       | Unregister a token. Body: `{ "token": "..." }`.             |
-| `GET`    | `/cron/poll`     | Fetch news and push anything new. Guarded by `CRON_SECRET`. |
-| `GET`    | `/cron/receipts` | Check delivery receipts and prune dead tokens. Guarded.     |
+| Method   | Path             | Description                                                   |
+| -------- | ---------------- | ------------------------------------------------------------- |
+| `GET`    | `/`              | Health check + which storage backend is active.               |
+| `POST`   | `/devices`       | Register an Expo push token. Body: `{ "token": "..." }`.      |
+| `DELETE` | `/devices`       | Unregister a token. Body: `{ "token": "..." }`.               |
+| `GET`    | `/cron/poll`     | Fetch news and push anything new. Guarded by `CRON_SECRET`.   |
+| `GET`    | `/cron/receipts` | Check delivery receipts and prune dead tokens. Guarded.       |
+| `*`      | `/api/inngest`   | Inngest callback. Signature-authenticated, not `CRON_SECRET`. |
+
+The `/cron/*` endpoints are the same jobs Inngest runs, exposed for manual runs
+and alternative schedulers. Inngest doesn't use them — it invokes the functions
+directly through `/api/inngest`.
 
 ## Local development
 
@@ -39,15 +44,23 @@ cp .env.example .env        # optional; runs with in-memory storage otherwise
 pnpm --filter @lfc/notifications dev
 ```
 
-Trigger a poll manually:
+Trigger a job manually:
 
 ```sh
 curl -X POST localhost:8787/devices -H 'content-type: application/json' \
   -d '{"token":"ExponentPushToken[xxxx]"}'
 curl localhost:8787/cron/poll
+curl localhost:8787/cron/receipts
 ```
 
-Set `LOCAL_POLL_MS=60000` to have the dev server poll on an interval instead.
+To exercise the real schedules locally, run the Inngest dev server alongside
+`pnpm dev` and point it at the app:
+
+```sh
+npx inngest-cli@latest dev -u http://localhost:8787/api/inngest
+```
+
+Or set `LOCAL_POLL_MS=60000` for a plain interval poll with no Inngest involved.
 
 ## Deploying to Vercel
 
@@ -61,67 +74,42 @@ Set `LOCAL_POLL_MS=60000` to have the dev server poll on an interval instead.
    `api/`.
 3. **Set environment variables** (see `.env.example`):
    - `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`
-   - `CRON_SECRET` — the poll endpoint requires it as
-     `Authorization: Bearer <CRON_SECRET>` and rejects requests without it.
+   - `INNGEST_SIGNING_KEY`, `INNGEST_EVENT_KEY` — from
+     [app.inngest.com](https://app.inngest.com); these drive the schedules.
+   - `CRON_SECRET` — only needed to call the manual `/cron/*` endpoints.
    - `EXPO_ACCESS_TOKEN` — only if you enabled Expo's enhanced push security.
 4. **Point the app at it.** Set `EXPO_PUBLIC_NOTIFICATIONS_API_URL` to the
    deployment URL when building the mobile app.
-5. **Schedule the poll** (see below) — the deploy itself doesn't run on a
-   timer.
+5. **Connect Inngest** (see below) — the deploy itself doesn't run on a timer.
 
-## Scheduling
+## Scheduling (Inngest)
 
-The service does nothing until something calls its cron endpoints on a schedule.
-Any scheduler works — it just needs to send the
-`Authorization: Bearer <CRON_SECRET>` header. Schedule two jobs:
+Both recurring jobs are [Inngest](https://www.inngest.com) functions defined in
+[`src/inngest.ts`](src/inngest.ts):
 
-- **`/cron/poll`** — often (e.g. every 5 min); this is your notification latency.
-- **`/cron/receipts`** — occasionally (e.g. every 30 min) to reap dead tokens.
-  It's cheap and non-urgent; skipping it just means dead tokens linger longer.
+| Function           | Cron           | What it does                       |
+| ------------------ | -------------- | ---------------------------------- |
+| `poll-news`        | `*/5 * * * *`  | Fetch articles, push anything new. |
+| `reap-dead-tokens` | `*/30 * * * *` | Check receipts, drop dead tokens.  |
 
-Pick a scheduler:
+Inngest calls back into the deployment at `/api/inngest` on those schedules, so
+the service needs no cron support from the host — **this is what makes it work
+on a Vercel Hobby plan**, where Vercel Cron is capped at once per day. Runs get
+automatic retries and a dashboard trail, which a bare cron ping didn't provide.
 
-### Upstash QStash (recommended)
+To connect it: create an app at [app.inngest.com](https://app.inngest.com), set
+`INNGEST_SIGNING_KEY` and `INNGEST_EVENT_KEY` in Vercel, then **sync** the app by
+pointing Inngest at `https://<your-app>.vercel.app/api/inngest`. (The
+[Vercel integration](https://www.inngest.com/docs/deploy/vercel) syncs
+automatically on each deploy.) Inngest discovers both functions from that
+endpoint; changing a cron means redeploying and re-syncing.
 
-You're already on Upstash for storage, so no new vendor. Create a schedule
-pointing at your deployment; the free tier (500 messages/day) comfortably covers
-a 5-minute cadence (288/day):
+To change a schedule, edit `POLL_CRON` / `RECEIPTS_CRON` in `src/inngest.ts`.
 
-```sh
-curl -X POST https://qstash.upstash.io/v2/schedules/https://<your-app>.vercel.app/cron/poll \
-  -H "Authorization: Bearer <QSTASH_TOKEN>" \
-  -H "Upstash-Cron: */5 * * * *" \
-  -H "Upstash-Forward-Authorization: Bearer <CRON_SECRET>"
-```
+### Alternatives
 
-`Upstash-Forward-*` headers are passed through to your endpoint, so QStash
-forwards the `CRON_SECRET` bearer for you. Worst-case delivery lag: ~5 min.
-Create a second schedule the same way for `/cron/receipts` (e.g.
-`Upstash-Cron: */30 * * * *`).
-
-### GitHub Actions (free, no signup)
-
-[`.github/workflows/poll-notifications.yml`](../../.github/workflows/poll-notifications.yml)
-pings `/cron/poll` (and `/cron/receipts`) every 5 minutes. Add a repo
-**variable** `NOTIFICATIONS_URL` (your deployment origin) and a repo **secret**
-`CRON_SECRET`. Note GitHub only runs schedules on the default branch,
-queues/throttles cron runs, and disables them after ~60 days of inactivity —
-reliable-ish, not punctual.
-
-### Vercel Cron
-
-Only if you're on Vercel **Pro** (Hobby caps cron at once/day). Add back to
-`vercel.json`:
-
-```json
-"crons": [{ "path": "/cron/poll", "schedule": "*/2 * * * *" }]
-```
-
-Vercel injects the `CRON_SECRET` bearer automatically.
-
-### Inngest
-
-Also viable: add the `inngest` SDK, wrap `pollAndNotify` in a cron-triggered
-Inngest function, and expose an Inngest `serve` route. More moving parts than
-the above, but you get retries and a run dashboard. Not wired up here — ask if
-you want it.
+The `/cron/poll` and `/cron/receipts` endpoints run the same jobs over HTTP,
+guarded by `Authorization: Bearer <CRON_SECRET>`, so another scheduler can drive
+them instead — e.g. **Upstash QStash** (same vendor as the Redis; use
+`Upstash-Forward-Authorization` to pass the secret through) or **Vercel Cron**
+if you're on Pro. You'd then not need the Inngest env vars.

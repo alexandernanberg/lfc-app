@@ -1,5 +1,7 @@
 import { Hono } from 'hono'
+import { serve as serveInngest } from 'inngest/hono'
 import { readEnv, type Env } from './env'
+import { createScheduledFunctions, inngest } from './inngest'
 import { pollAndNotify } from './poll'
 import { checkReceipts } from './receipts'
 import { createStore, type Store } from './store'
@@ -78,6 +80,19 @@ export function createApp(
   app.post('/cron/poll', runPoll)
   app.get('/cron/receipts', runReceipts)
   app.post('/cron/receipts', runReceipts)
+
+  // Inngest's callback endpoint. It's how Inngest discovers this app's
+  // scheduled functions and invokes them on their crons; it authenticates via
+  // request signature (INNGEST_SIGNING_KEY), not CRON_SECRET, so it's mounted
+  // outside the guard above. The functions share this app's env and store.
+  app.on(
+    ['GET', 'PUT', 'POST'],
+    '/api/inngest',
+    serveInngest({
+      client: inngest,
+      functions: createScheduledFunctions(env, store),
+    }),
+  )
 
   return app
 }

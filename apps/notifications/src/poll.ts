@@ -86,10 +86,15 @@ export async function pollAndNotify(
   const cap = Math.max(0, env.maxNotificationsPerPoll)
   const toNotify = cap === 0 ? [] : claimed.slice(-cap)
 
+  // `messages` and `messagePost` stay index-aligned so each send result can be
+  // attributed back to the article it was for (sendPushNotifications preserves
+  // input order across its batches).
   const messages: ExpoPushMessage[] = []
+  const messagePost: NewsPost[] = []
   for (const post of toNotify) {
     for (const token of devices) {
       messages.push(buildMessage(token, post))
+      messagePost.push(post)
     }
   }
 
@@ -97,11 +102,20 @@ export async function pollAndNotify(
     accessToken: env.expoAccessToken,
   })
 
-  // Total failure (Expo/network down): nothing got through. Roll the claims back
-  // so the next poll retries these articles rather than losing them.
-  if (messages.length > 0 && !results.some((r) => r.ok)) {
-    await Promise.all(toNotify.map((post) => store.releasePost(post.id)))
-    return { ...EMPTY, newPosts: claimed.length, rolledBack: toNotify.length }
+  // Roll back per article, not just when the whole send failed: an article whose
+  // every message failed reached nobody, so release its claim and let the next
+  // poll retry it. One that got through to at least one device stays claimed —
+  // rolling it back would re-notify the devices that already received it.
+  const deliveredPostIds = new Set<string>()
+  results.forEach((result, i) => {
+    const post = messagePost[i]
+    if (post && result.ok) {
+      deliveredPostIds.add(post.id)
+    }
+  })
+  const undelivered = toNotify.filter((post) => !deliveredPostIds.has(post.id))
+  if (undelivered.length > 0) {
+    await Promise.all(undelivered.map((post) => store.releasePost(post.id)))
   }
 
   // Prune tokens Expo reports dead in the immediate ticket. Most dead tokens
@@ -127,6 +141,7 @@ export async function pollAndNotify(
   return {
     ...EMPTY,
     newPosts: claimed.length,
+    rolledBack: undelivered.length,
     devices: devices.length,
     sent: results.filter((r) => r.ok).length,
     pruned: dead.size,

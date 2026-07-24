@@ -1,6 +1,7 @@
 import type { Session } from '@lfc/api'
 import CookieManager from '@react-native-cookies/cookies'
 import * as SecureStore from 'expo-secure-store'
+import { Platform } from 'react-native'
 import { config } from '~/config'
 
 ///////////////////////////////////////////////////////////
@@ -61,9 +62,26 @@ async function writeCookie(token: string | null) {
       value: token,
       path: '/',
     })
-  } else {
-    await CookieManager.clearAll()
+    return
   }
+
+  // Clear only *our* cookie. `clearAll()` would also wipe cookies for every
+  // other host — including the Twitter/Instagram embeds the app renders — which
+  // is a surprising side effect of signing out.
+  if (Platform.OS === 'ios') {
+    // Scoped removal is iOS-only in @react-native-cookies/cookies.
+    await CookieManager.clearByName(COOKIE_ORIGIN, 'lfc-se')
+    return
+  }
+  // Android has no scoped clear, so overwrite with an already-expired cookie and
+  // flush so the native jar persists the removal.
+  await CookieManager.set(COOKIE_ORIGIN, {
+    name: 'lfc-se',
+    value: '',
+    path: '/',
+    expires: new Date(0).toISOString(),
+  })
+  await CookieManager.flush()
 }
 
 function serialize(session: Session): StoredSession {
@@ -97,16 +115,24 @@ export async function restoreSession(): Promise<Session | null> {
     return null
   }
 
-  let stored: StoredSession
+  // Parse *and* map inside the guard: a value that's valid JSON but the wrong
+  // shape (`null`, `{}`, a truncated write) would otherwise throw here and take
+  // the whole app down — this runs at module load and is consumed with `use()`,
+  // so a rejection surfaces as a render error on every launch, and the bad entry
+  // would never get cleared.
+  let session: Session
   try {
-    stored = JSON.parse(raw) as StoredSession
+    const stored = JSON.parse(raw) as StoredSession | null
+    if (!stored || typeof stored.token !== 'string' || stored.token === '') {
+      throw new Error('Stored session is missing a token')
+    }
+    session = deserialize(stored)
   } catch {
     // Corrupted entry, treat as logged out.
     await SecureStore.deleteItemAsync(SESSION_KEY)
     return null
   }
 
-  const session = deserialize(stored)
   await writeCookie(session.token)
   current = session
   emit()
