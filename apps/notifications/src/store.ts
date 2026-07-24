@@ -202,8 +202,12 @@ class MemoryStore implements Store {
 }
 
 /**
- * Build the {@link Store} for this env, picking Upstash Redis when configured
- * and otherwise an in-memory fallback. Called once per app instance.
+ * Build the {@link Store} for this env: Upstash Redis when configured, otherwise
+ * an in-memory fallback for local dev. Called once per app instance.
+ *
+ * On Vercel the in-memory fallback is refused (it throws): serverless
+ * invocations don't share memory and cold-start constantly, so it would
+ * silently drop device tokens and every bit of poll state. Configure Upstash.
  */
 export function createStore(env: Env): Store {
   if (env.upstashUrl && env.upstashToken) {
@@ -212,9 +216,18 @@ export function createStore(env: Env): Store {
     )
   }
 
+  if (env.isVercel) {
+    throw new Error(
+      '[notifications] Durable storage is required on Vercel but ' +
+        'UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN are not set. The ' +
+        'in-memory store cannot work across serverless invocations. Configure ' +
+        'Upstash Redis (see apps/notifications/README.md).',
+    )
+  }
+
   console.warn(
     '[notifications] UPSTASH_REDIS_REST_URL/TOKEN not set — using in-memory ' +
-      'store. Device tokens and sent-article claims will not survive a ' +
+      'store (local dev only). Device tokens and poll state will not survive a ' +
       'restart. Configure Upstash Redis for production.',
   )
   return new MemoryStore()

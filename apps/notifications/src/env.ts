@@ -24,6 +24,12 @@ export interface Env {
   cronSecret: string | null
   /** Optional Expo access token, sent with push requests for extra security. */
   expoAccessToken: string | null
+  /**
+   * Whether we're running on Vercel (it sets `VERCEL=1`). Used to refuse the
+   * in-memory store there — serverless invocations don't share memory, so it
+   * would silently lose all state.
+   */
+  isVercel: boolean
 }
 
 function num(value: string | undefined, fallback: number): number {
@@ -40,5 +46,6 @@ export function readEnv(source: NodeJS.ProcessEnv = process.env): Env {
     upstashToken: source.UPSTASH_REDIS_REST_TOKEN || null,
     cronSecret: source.CRON_SECRET || null,
     expoAccessToken: source.EXPO_ACCESS_TOKEN || null,
+    isVercel: Boolean(source.VERCEL),
   }
 }

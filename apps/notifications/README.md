@@ -53,8 +53,9 @@ Set `LOCAL_POLL_MS=60000` to have the dev server poll on an interval instead.
 
 1. **Create a Redis database.** [Upstash](https://upstash.com) (or the Vercel
    Marketplace integration) gives you `UPSTASH_REDIS_REST_URL` and
-   `UPSTASH_REDIS_REST_TOKEN`. Without them the service uses in-memory storage
-   and loses all device tokens on every cold start.
+   `UPSTASH_REDIS_REST_TOKEN`. These are **required on Vercel** — the service
+   refuses to start there without them, because serverless invocations don't
+   share memory (the in-memory fallback is local-dev only).
 2. **Import the project** into Vercel with the **root directory set to
    `apps/notifications`**. `vercel.json` wires all routes to the function in
    `api/`.
