@@ -104,8 +104,8 @@ export async function pollAndNotify(
     return { ...EMPTY, newPosts: claimed.length, rolledBack: toNotify.length }
   }
 
-  // Prune tokens Expo says are gone (app uninstalled, token rotated) so we stop
-  // trying to reach them.
+  // Prune tokens Expo reports dead in the immediate ticket. Most dead tokens
+  // are only reported later, in the delivery receipt — see checkReceipts.
   const dead = new Set<string>()
   for (const result of results) {
     if (!result.ok && result.error === 'DeviceNotRegistered') {
@@ -115,6 +115,14 @@ export async function pollAndNotify(
   for (const token of dead) {
     await store.removeDevice(token)
   }
+
+  // Stash the accepted receipt ids so a later pass can check delivery and prune
+  // tokens Expo only reports as dead after the fact.
+  const now = Date.now()
+  const pending = results
+    .filter((r) => r.ok && r.ticketId)
+    .map((r) => ({ ticketId: r.ticketId!, token: r.token, ts: now }))
+  await store.addPendingReceipts(pending)
 
   return {
     ...EMPTY,

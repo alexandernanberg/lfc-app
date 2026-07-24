@@ -8,26 +8,29 @@ on-device background poll with prompt, server-driven delivery.
 
 - **Devices register** their [Expo push token](https://docs.expo.dev/push-notifications/overview/)
   via `POST /devices`. Tokens are stored in Redis.
-- **Vercel Cron** calls `GET /cron/poll` on a schedule.
-- Each poll fetches the latest articles from lfc.se (via `@lfc/api`) and, for
-  any not yet announced, sends an
-  [Expo push](https://docs.expo.dev/push-notifications/sending-notifications/) —
-  pruning any tokens Expo reports as dead. An atomic per-article claim in Redis
-  makes this idempotent, so overlapping polls can't double-notify; a total send
-  failure rolls its claims back so the next poll retries instead of dropping the
-  article.
+- **`/cron/poll`** is called on a schedule. Each poll fetches the latest articles
+  from lfc.se (via `@lfc/api`) and, for any not yet announced, sends an
+  [Expo push](https://docs.expo.dev/push-notifications/sending-notifications/).
+  An atomic per-article claim in Redis makes this idempotent, so overlapping
+  polls can't double-notify; a total send failure rolls its claims back so the
+  next poll retries instead of dropping the article.
+- **`/cron/receipts`** is called on a (slower) schedule to prune dead tokens.
+  Sending only yields a _ticket_ (accepted); a token that has gone dead is
+  reported later in the _delivery receipt_. This pass looks up the receipts for
+  accepted pushes and removes any token Expo reports as `DeviceNotRegistered`.
 
 The first poll only records the current articles (no notifications), so
 standing up the service doesn't blast the whole backlog.
 
 ## Endpoints
 
-| Method   | Path         | Description                                              |
-| -------- | ------------ | -------------------------------------------------------- |
-| `GET`    | `/`          | Health check + which storage backend is active.          |
-| `POST`   | `/devices`   | Register an Expo push token. Body: `{ "token": "..." }`. |
-| `DELETE` | `/devices`   | Unregister a token. Body: `{ "token": "..." }`.          |
-| `GET`    | `/cron/poll` | Run one poll. Guarded by `CRON_SECRET` when set.         |
+| Method   | Path             | Description                                                 |
+| -------- | ---------------- | ----------------------------------------------------------- |
+| `GET`    | `/`              | Health check + which storage backend is active.             |
+| `POST`   | `/devices`       | Register an Expo push token. Body: `{ "token": "..." }`.    |
+| `DELETE` | `/devices`       | Unregister a token. Body: `{ "token": "..." }`.             |
+| `GET`    | `/cron/poll`     | Fetch news and push anything new. Guarded by `CRON_SECRET`. |
+| `GET`    | `/cron/receipts` | Check delivery receipts and prune dead tokens. Guarded.     |
 
 ## Local development
 
@@ -65,11 +68,17 @@ Set `LOCAL_POLL_MS=60000` to have the dev server poll on an interval instead.
 5. **Schedule the poll** (see below) — the deploy itself doesn't run on a
    timer.
 
-## Scheduling the poll
+## Scheduling
 
-The service does nothing until something calls `GET`/`POST /cron/poll` on a
-schedule. Any scheduler works — it just needs to send the
-`Authorization: Bearer <CRON_SECRET>` header. Pick one:
+The service does nothing until something calls its cron endpoints on a schedule.
+Any scheduler works — it just needs to send the
+`Authorization: Bearer <CRON_SECRET>` header. Schedule two jobs:
+
+- **`/cron/poll`** — often (e.g. every 5 min); this is your notification latency.
+- **`/cron/receipts`** — occasionally (e.g. every 30 min) to reap dead tokens.
+  It's cheap and non-urgent; skipping it just means dead tokens linger longer.
+
+Pick a scheduler:
 
 ### Upstash QStash (recommended)
 
@@ -86,14 +95,17 @@ curl -X POST https://qstash.upstash.io/v2/schedules/https://<your-app>.vercel.ap
 
 `Upstash-Forward-*` headers are passed through to your endpoint, so QStash
 forwards the `CRON_SECRET` bearer for you. Worst-case delivery lag: ~5 min.
+Create a second schedule the same way for `/cron/receipts` (e.g.
+`Upstash-Cron: */30 * * * *`).
 
 ### GitHub Actions (free, no signup)
 
 [`.github/workflows/poll-notifications.yml`](../../.github/workflows/poll-notifications.yml)
-pings the endpoint every 5 minutes. Add a repo **variable** `NOTIFICATIONS_URL`
-(your deployment origin) and a repo **secret** `CRON_SECRET`. Note GitHub only
-runs schedules on the default branch, queues/throttles cron runs, and disables
-them after ~60 days of inactivity — reliable-ish, not punctual.
+pings `/cron/poll` (and `/cron/receipts`) every 5 minutes. Add a repo
+**variable** `NOTIFICATIONS_URL` (your deployment origin) and a repo **secret**
+`CRON_SECRET`. Note GitHub only runs schedules on the default branch,
+queues/throttles cron runs, and disables them after ~60 days of inactivity —
+reliable-ish, not punctual.
 
 ### Vercel Cron
 

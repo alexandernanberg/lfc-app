@@ -30,11 +30,34 @@ export interface Store {
   claimPost(id: string): Promise<boolean>
   /** Release a previously-claimed id so a later poll can retry it. */
   releasePost(id: string): Promise<void>
+  /** Record accepted-push receipt ids to look up later (token + enqueue time). */
+  addPendingReceipts(entries: PendingReceipt[]): Promise<void>
+  /** All receipt ids still awaiting a delivery receipt. */
+  listPendingReceipts(): Promise<PendingReceipt[]>
+  /** Forget receipt ids once resolved (or aged out). */
+  removePendingReceipts(ticketIds: string[]): Promise<void>
+}
+
+/** An accepted push whose delivery receipt we still need to check. */
+export interface PendingReceipt {
+  /** Expo receipt id from the send ticket. */
+  ticketId: string
+  /** The device token the push went to, so we can prune it if it's dead. */
+  token: string
+  /** When it was enqueued (ms), so stale entries can be dropped. */
+  ts: number
 }
 
 const DEVICES_KEY = 'lfc:devices'
 const SEEDED_KEY = 'lfc:seeded'
 const CLAIM_PREFIX = 'lfc:sent:'
+const RECEIPTS_KEY = 'lfc:receipts'
+
+/** Value stored per pending receipt (the id is the hash field). */
+interface ReceiptEntry {
+  token: string
+  ts: number
+}
 // Claims self-expire so the keyspace stays bounded. Comfortably longer than any
 // article stays in the fetched list, so a claim never expires while the article
 // could still be re-detected as new.
@@ -76,6 +99,35 @@ class RedisStore implements Store {
   async releasePost(id: string): Promise<void> {
     await this.redis.del(`${CLAIM_PREFIX}${id}`)
   }
+
+  async addPendingReceipts(entries: PendingReceipt[]): Promise<void> {
+    if (entries.length === 0) {
+      return
+    }
+    const fields: Record<string, ReceiptEntry> = {}
+    for (const { ticketId, token, ts } of entries) {
+      fields[ticketId] = { token, ts }
+    }
+    await this.redis.hset(RECEIPTS_KEY, fields)
+  }
+
+  async listPendingReceipts(): Promise<PendingReceipt[]> {
+    const all =
+      (await this.redis.hgetall<Record<string, ReceiptEntry>>(RECEIPTS_KEY)) ??
+      {}
+    return Object.entries(all).map(([ticketId, { token, ts }]) => ({
+      ticketId,
+      token,
+      ts,
+    }))
+  }
+
+  async removePendingReceipts(ticketIds: string[]): Promise<void> {
+    if (ticketIds.length === 0) {
+      return
+    }
+    await this.redis.hdel(RECEIPTS_KEY, ...ticketIds)
+  }
 }
 
 /**
@@ -85,6 +137,7 @@ class RedisStore implements Store {
 class MemoryStore implements Store {
   private readonly devices = new Set<string>()
   private readonly claimed = new Set<string>()
+  private readonly receipts = new Map<string, ReceiptEntry>()
   private seeded = false
 
   addDevice(token: string): Promise<void> {
@@ -120,6 +173,30 @@ class MemoryStore implements Store {
 
   releasePost(id: string): Promise<void> {
     this.claimed.delete(id)
+    return Promise.resolve()
+  }
+
+  addPendingReceipts(entries: PendingReceipt[]): Promise<void> {
+    for (const { ticketId, token, ts } of entries) {
+      this.receipts.set(ticketId, { token, ts })
+    }
+    return Promise.resolve()
+  }
+
+  listPendingReceipts(): Promise<PendingReceipt[]> {
+    return Promise.resolve(
+      [...this.receipts.entries()].map(([ticketId, { token, ts }]) => ({
+        ticketId,
+        token,
+        ts,
+      })),
+    )
+  }
+
+  removePendingReceipts(ticketIds: string[]): Promise<void> {
+    for (const id of ticketIds) {
+      this.receipts.delete(id)
+    }
     return Promise.resolve()
   }
 }

@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { readEnv, type Env } from './env'
 import { pollAndNotify } from './poll'
+import { checkReceipts } from './receipts'
 import { createStore, type Store } from './store'
 
 /** Loose check that a string looks like an Expo push token. */
@@ -52,21 +53,31 @@ export function createApp(
     return c.json({ ok: true })
   })
 
-  // The polling job. Invoked by Vercel Cron on a schedule; also callable
-  // manually. Guarded by CRON_SECRET when one is configured.
+  // Scheduled jobs. Callable manually; guarded by CRON_SECRET when configured.
+  const authorized = (c: import('hono').Context) =>
+    !env.cronSecret ||
+    c.req.header('Authorization') === `Bearer ${env.cronSecret}`
+
+  // Fetch news and push notifications for anything new.
   const runPoll = async (c: import('hono').Context) => {
-    if (env.cronSecret) {
-      const auth = c.req.header('Authorization')
-      if (auth !== `Bearer ${env.cronSecret}`) {
-        return c.json({ error: 'Unauthorized' }, 401)
-      }
+    if (!authorized(c)) {
+      return c.json({ error: 'Unauthorized' }, 401)
     }
-    const result = await pollAndNotify(store, env)
-    return c.json(result)
+    return c.json(await pollAndNotify(store, env))
+  }
+
+  // Check delivery receipts for earlier pushes and prune dead device tokens.
+  const runReceipts = async (c: import('hono').Context) => {
+    if (!authorized(c)) {
+      return c.json({ error: 'Unauthorized' }, 401)
+    }
+    return c.json(await checkReceipts(store, env))
   }
 
   app.get('/cron/poll', runPoll)
   app.post('/cron/poll', runPoll)
+  app.get('/cron/receipts', runReceipts)
+  app.post('/cron/receipts', runReceipts)
 
   return app
 }

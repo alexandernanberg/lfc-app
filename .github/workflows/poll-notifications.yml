@@ -1,7 +1,7 @@
 # Free scheduler for the notifications backend, for when Vercel Cron isn't
-# available (Hobby plan only allows daily crons). This pings the deployed
-# /cron/poll endpoint on a schedule so it checks lfc.se for new articles and
-# pushes them out.
+# available (Hobby plan only allows daily crons). This pings the deployed cron
+# endpoints on a schedule: /cron/poll checks lfc.se for new articles and pushes
+# them out, and /cron/receipts reaps dead device tokens.
 #
 # Setup:
 #   - Repo variable  NOTIFICATIONS_URL  = https://<your-app>.vercel.app
@@ -38,7 +38,24 @@ jobs:
           code=$(curl -sS -o /tmp/body -w '%{http_code}' \
             -X POST "${NOTIFICATIONS_URL%/}/cron/poll" \
             -H "Authorization: Bearer ${CRON_SECRET}")
-          echo "HTTP $code"
+          echo "poll: HTTP $code"
+          cat /tmp/body
+          echo
+          [ "$code" -ge 200 ] && [ "$code" -lt 300 ]
+
+      # Receipt reaping is cheap and non-urgent; running it every poll is fine
+      # (receipts that aren't ready yet are simply retried next time). Don't fail
+      # the run if only this step errors — the poll above is what matters.
+      - name: Check receipts
+        continue-on-error: true
+        env:
+          NOTIFICATIONS_URL: ${{ vars.NOTIFICATIONS_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          code=$(curl -sS -o /tmp/body -w '%{http_code}' \
+            -X POST "${NOTIFICATIONS_URL%/}/cron/receipts" \
+            -H "Authorization: Bearer ${CRON_SECRET}")
+          echo "receipts: HTTP $code"
           cat /tmp/body
           echo
           [ "$code" -ge 200 ] && [ "$code" -lt 300 ]
