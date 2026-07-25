@@ -17,11 +17,14 @@ import {
 // Request layer
 ///////////////////////////////////////////////////////////
 //
-// Authenticated requests carry the `lfc-se` session cookie. On mobile that
-// cookie lives in the native cookie store and is attached automatically by
-// `credentials: 'include'` (a manually set `Cookie` header is silently dropped
-// on iOS, so we rely on the store rather than setting it ourselves). Managing
-// that cookie is the caller's job — the client just needs `credentials`.
+// Authenticated requests carry the `lfc-se` session cookie. On React Native the
+// *native cookie store* is what attaches it — the platform networking layer
+// sends cookies from its own jar automatically, and on iOS it silently drops a
+// hand-set `Cookie` header, so putting the token in that store is the only
+// thing that works. (`credentials` is a browser-fetch concept RN largely
+// ignores; we pass 'include' as a conservative default, but it is not the
+// mechanism.) Populating that store is the caller's job — see the app's
+// `~/lib/session`.
 //
 // The notifications backend only ever calls public endpoints, so it needs no
 // auth at all. Everything here — building requests, parsing responses — is

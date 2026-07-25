@@ -221,7 +221,7 @@ export async function registerDeviceForPush(): Promise<void> {
     return
   }
   try {
-    const res = await fetch(`${apiUrl}/devices`, {
+    const res = await fetch(`${apiUrl}/api/devices`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token }),
@@ -243,7 +243,7 @@ export async function unregisterDeviceForPush(): Promise<void> {
   const token = await SecureStore.getItemAsync(PUSH_TOKEN_KEY)
   if (apiUrl && token) {
     try {
-      await fetch(`${apiUrl}/devices`, {
+      await fetch(`${apiUrl}/api/devices`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token }),

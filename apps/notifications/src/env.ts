@@ -1,9 +1,9 @@
 import { DEFAULT_API_URL } from '@lfc/api'
 
 /**
- * Runtime configuration, read from environment variables. Everything has a sane
- * default so the service boots locally with zero config (falling back to
- * in-memory storage and an unauthenticated cron endpoint).
+ * Runtime configuration, read from environment variables. The tuning knobs all
+ * have sane defaults; the Upstash credentials do not — storage is required and
+ * `createStore` throws without it.
  */
 export interface Env {
   /** lfc.se web API base to poll. */
@@ -18,12 +18,6 @@ export interface Env {
   upstashToken: string | null
   /** Optional Expo access token, sent with push requests for extra security. */
   expoAccessToken: string | null
-  /**
-   * Whether we're running on Vercel (it sets `VERCEL=1`). Used to refuse the
-   * in-memory store there — serverless invocations don't share memory, so it
-   * would silently lose all state.
-   */
-  isVercel: boolean
 }
 
 function num(value: string | undefined, fallback: number): number {
@@ -39,6 +33,5 @@ export function readEnv(source: NodeJS.ProcessEnv = process.env): Env {
     upstashUrl: source.UPSTASH_REDIS_REST_URL || null,
     upstashToken: source.UPSTASH_REDIS_REST_TOKEN || null,
     expoAccessToken: source.EXPO_ACCESS_TOKEN || null,
-    isVercel: Boolean(source.VERCEL),
   }
 }

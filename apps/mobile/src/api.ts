@@ -26,8 +26,10 @@ export function setUnauthorizedHandler(handler: (() => void) | null) {
 
 const client = createClient({
   baseUrl: config.get('apiUrl'),
-  // The session cookie lives in the native store (managed by `~/lib/session`);
-  // `include` makes the native layer attach it on every request.
+  // The session cookie lives in the native cookie store (managed by
+  // `~/lib/session`), and the native networking layer attaches it from there —
+  // that store, not this flag, is what authenticates requests. 'include' is
+  // just a conservative default.
   credentials: 'include',
   onUnauthorized: () => onUnauthorized?.(),
 })

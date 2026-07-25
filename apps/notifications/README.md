@@ -7,7 +7,7 @@ on-device background poll with prompt, server-driven delivery.
 ## How it works
 
 - **Devices register** their [Expo push token](https://docs.expo.dev/push-notifications/overview/)
-  via `POST /devices`. Tokens are stored in Redis.
+  via `POST /api/devices`. Tokens are stored in Redis.
 - **`poll-news`** runs every 5 min. Each poll fetches the latest articles from
   lfc.se (via `@lfc/api`) and, for any not yet announced, sends an
   [Expo push](https://docs.expo.dev/push-notifications/sending-notifications/).
@@ -26,10 +26,15 @@ standing up the service doesn't blast the whole backlog.
 
 | Method   | Path           | Description                                              |
 | -------- | -------------- | -------------------------------------------------------- |
-| `GET`    | `/`            | Health check + which storage backend is active.          |
-| `POST`   | `/devices`     | Register an Expo push token. Body: `{ "token": "..." }`. |
-| `DELETE` | `/devices`     | Unregister a token. Body: `{ "token": "..." }`.          |
+| `GET`    | `/api/health`  | Health check.                                            |
+| `POST`   | `/api/devices` | Register an Expo push token. Body: `{ "token": "..." }`. |
+| `DELETE` | `/api/devices` | Unregister a token. Body: `{ "token": "..." }`.          |
 | `*`      | `/api/inngest` | Inngest callback. Authenticated by request signature.    |
+
+Everything lives under `/api` on purpose: Vercel serves the whole app from
+`api/[...route].ts` via its own filesystem routing, so there's **no `vercel.json`
+rewrite** in front of it and Hono receives the original request path. Local dev
+uses the identical paths.
 
 The recurring jobs have no HTTP routes of their own — Inngest invokes them
 through `/api/inngest`. To run one by hand, use the Inngest dashboard (or the
@@ -37,15 +42,19 @@ local dev server below), which can trigger any function on demand.
 
 ## Local development
 
+There is **no in-memory store** — Redis is required, locally too. The simplest
+option is a free [Upstash](https://upstash.com) database (a dev-only one is
+fine); put its REST URL and token in `.env`.
+
 ```sh
-cp .env.example .env        # optional; runs with in-memory storage otherwise
+cp .env.example .env        # fill in UPSTASH_REDIS_REST_*
 pnpm --filter @lfc/notifications dev
 ```
 
 Register a device:
 
 ```sh
-curl -X POST localhost:8787/devices -H 'content-type: application/json' \
+curl -X POST localhost:8787/api/devices -H 'content-type: application/json' \
   -d '{"token":"ExponentPushToken[xxxx]"}'
 ```
 
@@ -63,12 +72,13 @@ Or set `LOCAL_POLL_MS=60000` for a plain interval poll with no Inngest involved.
 
 1. **Create a Redis database.** [Upstash](https://upstash.com) (or the Vercel
    Marketplace integration) gives you `UPSTASH_REDIS_REST_URL` and
-   `UPSTASH_REDIS_REST_TOKEN`. These are **required on Vercel** — the service
-   refuses to start there without them, because serverless invocations don't
-   share memory (the in-memory fallback is local-dev only).
+   `UPSTASH_REDIS_REST_TOKEN`. These are **required** — the service has no
+   in-memory fallback and throws at startup without them.
 2. **Import the project** into Vercel with the **root directory set to
-   `apps/notifications`**. `vercel.json` wires all routes to the function in
-   `api/`.
+   `apps/notifications`**. No `vercel.json` is needed: `api/[...route].ts` is
+   picked up by Vercel's filesystem routing and serves every `/api/*` path.
+   Since this is a pnpm workspace, make sure Vercel's "Include files outside the
+   root directory" is enabled so the `@lfc/api` workspace dependency resolves.
 3. **Set environment variables** (see `.env.example`):
    - `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`
    - `INNGEST_SIGNING_KEY`, `INNGEST_EVENT_KEY` — from

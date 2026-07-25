@@ -131,104 +131,25 @@ class RedisStore implements Store {
 }
 
 /**
- * Process-memory store. Loses everything on restart, so it's only a fallback
- * for local dev / when Upstash isn't configured. A warning is logged at boot.
- */
-class MemoryStore implements Store {
-  private readonly devices = new Set<string>()
-  private readonly claimed = new Set<string>()
-  private readonly receipts = new Map<string, ReceiptEntry>()
-  private seeded = false
-
-  addDevice(token: string): Promise<void> {
-    this.devices.add(token)
-    return Promise.resolve()
-  }
-
-  removeDevice(token: string): Promise<void> {
-    this.devices.delete(token)
-    return Promise.resolve()
-  }
-
-  listDevices(): Promise<string[]> {
-    return Promise.resolve([...this.devices])
-  }
-
-  isSeeded(): Promise<boolean> {
-    return Promise.resolve(this.seeded)
-  }
-
-  markSeeded(): Promise<void> {
-    this.seeded = true
-    return Promise.resolve()
-  }
-
-  claimPost(id: string): Promise<boolean> {
-    if (this.claimed.has(id)) {
-      return Promise.resolve(false)
-    }
-    this.claimed.add(id)
-    return Promise.resolve(true)
-  }
-
-  releasePost(id: string): Promise<void> {
-    this.claimed.delete(id)
-    return Promise.resolve()
-  }
-
-  addPendingReceipts(entries: PendingReceipt[]): Promise<void> {
-    for (const { ticketId, token, ts } of entries) {
-      this.receipts.set(ticketId, { token, ts })
-    }
-    return Promise.resolve()
-  }
-
-  listPendingReceipts(): Promise<PendingReceipt[]> {
-    return Promise.resolve(
-      [...this.receipts.entries()].map(([ticketId, { token, ts }]) => ({
-        ticketId,
-        token,
-        ts,
-      })),
-    )
-  }
-
-  removePendingReceipts(ticketIds: string[]): Promise<void> {
-    for (const id of ticketIds) {
-      this.receipts.delete(id)
-    }
-    return Promise.resolve()
-  }
-}
-
-/**
- * Build the {@link Store} for this env: Upstash Redis when configured, otherwise
- * an in-memory fallback for local dev. Called once per app instance.
+ * Build the {@link Store}. Redis is the only implementation: the service runs on
+ * serverless invocations that share no memory and cold-start constantly, so an
+ * in-process fallback could only ever pretend to work — it would drop device
+ * tokens and poll state between requests while still returning 200s. Missing
+ * credentials is a configuration error, so fail loudly here instead.
  *
- * On Vercel the in-memory fallback is refused (it throws): serverless
- * invocations don't share memory and cold-start constantly, so it would
- * silently drop device tokens and every bit of poll state. Configure Upstash.
+ * Point `UPSTASH_REDIS_REST_URL` at a local Redis (or a free Upstash database)
+ * for development; see apps/notifications/README.md.
  */
 export function createStore(env: Env): Store {
-  if (env.upstashUrl && env.upstashToken) {
-    return new RedisStore(
-      new Redis({ url: env.upstashUrl, token: env.upstashToken }),
-    )
-  }
-
-  if (env.isVercel) {
+  if (!env.upstashUrl || !env.upstashToken) {
     throw new Error(
-      '[notifications] Durable storage is required on Vercel but ' +
-        'UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN are not set. The ' +
-        'in-memory store cannot work across serverless invocations. Configure ' +
-        'Upstash Redis (see apps/notifications/README.md).',
+      '[notifications] UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are ' +
+        'required. This service has no in-memory fallback — see ' +
+        'apps/notifications/README.md.',
     )
   }
 
-  console.warn(
-    '[notifications] UPSTASH_REDIS_REST_URL/TOKEN not set — using in-memory ' +
-      'store (local dev only). Device tokens and poll state will not survive a ' +
-      'restart. Configure Upstash Redis for production.',
+  return new RedisStore(
+    new Redis({ url: env.upstashUrl, token: env.upstashToken }),
   )
-  return new MemoryStore()
 }

@@ -21,13 +21,15 @@ export function createApp(
   env: Env = readEnv(),
   store: Store = createStore(env),
 ) {
-  const app = new Hono()
+  // Everything lives under /api so Vercel's filesystem routing serves it
+  // directly from api/[...route].ts — no vercel.json rewrite in the way, and the
+  // function receives the original path. Local dev uses the same paths.
+  const app = new Hono().basePath('/api')
 
-  app.get('/', (c) =>
+  app.get('/health', (c) =>
     c.json({
       service: 'lfc-notifications',
       status: 'ok',
-      storage: env.upstashUrl ? 'redis' : 'memory',
     }),
   )
 
@@ -53,14 +55,14 @@ export function createApp(
     return c.json({ ok: true })
   })
 
-  // Inngest's callback endpoint: how Inngest discovers this app's scheduled
-  // functions and invokes them on their crons. It authenticates by request
-  // signature (INNGEST_SIGNING_KEY). The recurring jobs run only through here —
-  // there are no separate HTTP trigger routes. The functions share this app's
-  // env and store.
+  // Inngest's callback endpoint (/api/inngest via the basePath above): how
+  // Inngest discovers this app's scheduled functions and invokes them on their
+  // crons. It authenticates by request signature (INNGEST_SIGNING_KEY). The
+  // recurring jobs run only through here — there are no separate HTTP trigger
+  // routes. The functions share this app's env and store.
   app.on(
     ['GET', 'PUT', 'POST'],
-    '/api/inngest',
+    '/inngest',
     serveInngest({
       client: inngest,
       functions: createScheduledFunctions(env, store),
