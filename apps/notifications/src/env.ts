@@ -16,12 +16,6 @@ export interface Env {
   upstashUrl: string | null
   /** Upstash Redis REST token, if configured. */
   upstashToken: string | null
-  /**
-   * Shared secret the cron endpoint requires. Vercel Cron sends it as
-   * `Authorization: Bearer <CRON_SECRET>`. When unset the endpoint is open —
-   * fine for local dev, but set it in production.
-   */
-  cronSecret: string | null
   /** Optional Expo access token, sent with push requests for extra security. */
   expoAccessToken: string | null
   /**
@@ -44,7 +38,6 @@ export function readEnv(source: NodeJS.ProcessEnv = process.env): Env {
     maxNotificationsPerPoll: num(source.MAX_NOTIFICATIONS_PER_POLL, 5),
     upstashUrl: source.UPSTASH_REDIS_REST_URL || null,
     upstashToken: source.UPSTASH_REDIS_REST_TOKEN || null,
-    cronSecret: source.CRON_SECRET || null,
     expoAccessToken: source.EXPO_ACCESS_TOKEN || null,
     isVercel: Boolean(source.VERCEL),
   }

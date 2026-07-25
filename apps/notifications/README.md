@@ -24,18 +24,16 @@ standing up the service doesn't blast the whole backlog.
 
 ## Endpoints
 
-| Method   | Path             | Description                                                   |
-| -------- | ---------------- | ------------------------------------------------------------- |
-| `GET`    | `/`              | Health check + which storage backend is active.               |
-| `POST`   | `/devices`       | Register an Expo push token. Body: `{ "token": "..." }`.      |
-| `DELETE` | `/devices`       | Unregister a token. Body: `{ "token": "..." }`.               |
-| `GET`    | `/cron/poll`     | Fetch news and push anything new. Guarded by `CRON_SECRET`.   |
-| `GET`    | `/cron/receipts` | Check delivery receipts and prune dead tokens. Guarded.       |
-| `*`      | `/api/inngest`   | Inngest callback. Signature-authenticated, not `CRON_SECRET`. |
+| Method   | Path           | Description                                              |
+| -------- | -------------- | -------------------------------------------------------- |
+| `GET`    | `/`            | Health check + which storage backend is active.          |
+| `POST`   | `/devices`     | Register an Expo push token. Body: `{ "token": "..." }`. |
+| `DELETE` | `/devices`     | Unregister a token. Body: `{ "token": "..." }`.          |
+| `*`      | `/api/inngest` | Inngest callback. Authenticated by request signature.    |
 
-The `/cron/*` endpoints are the same jobs Inngest runs, exposed for manual runs
-and alternative schedulers. Inngest doesn't use them — it invokes the functions
-directly through `/api/inngest`.
+The recurring jobs have no HTTP routes of their own — Inngest invokes them
+through `/api/inngest`. To run one by hand, use the Inngest dashboard (or the
+local dev server below), which can trigger any function on demand.
 
 ## Local development
 
@@ -44,17 +42,16 @@ cp .env.example .env        # optional; runs with in-memory storage otherwise
 pnpm --filter @lfc/notifications dev
 ```
 
-Trigger a job manually:
+Register a device:
 
 ```sh
 curl -X POST localhost:8787/devices -H 'content-type: application/json' \
   -d '{"token":"ExponentPushToken[xxxx]"}'
-curl localhost:8787/cron/poll
-curl localhost:8787/cron/receipts
 ```
 
-To exercise the real schedules locally, run the Inngest dev server alongside
-`pnpm dev` and point it at the app:
+To run the scheduled jobs, start the Inngest dev server alongside `pnpm dev` and
+point it at the app. Its UI (http://localhost:8288) lists both functions and can
+trigger either on demand:
 
 ```sh
 npx inngest-cli@latest dev -u http://localhost:8787/api/inngest
@@ -76,7 +73,6 @@ Or set `LOCAL_POLL_MS=60000` for a plain interval poll with no Inngest involved.
    - `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`
    - `INNGEST_SIGNING_KEY`, `INNGEST_EVENT_KEY` — from
      [app.inngest.com](https://app.inngest.com); these drive the schedules.
-   - `CRON_SECRET` — only needed to call the manual `/cron/*` endpoints.
    - `EXPO_ACCESS_TOKEN` — only if you enabled Expo's enhanced push security.
 4. **Point the app at it.** Set `EXPO_PUBLIC_NOTIFICATIONS_API_URL` to the
    deployment URL when building the mobile app.
@@ -105,11 +101,3 @@ automatically on each deploy.) Inngest discovers both functions from that
 endpoint; changing a cron means redeploying and re-syncing.
 
 To change a schedule, edit `POLL_CRON` / `RECEIPTS_CRON` in `src/inngest.ts`.
-
-### Alternatives
-
-The `/cron/poll` and `/cron/receipts` endpoints run the same jobs over HTTP,
-guarded by `Authorization: Bearer <CRON_SECRET>`, so another scheduler can drive
-them instead — e.g. **Upstash QStash** (same vendor as the Redis; use
-`Upstash-Forward-Authorization` to pass the secret through) or **Vercel Cron**
-if you're on Pro. You'd then not need the Inngest env vars.

@@ -2,8 +2,6 @@ import { Hono } from 'hono'
 import { serve as serveInngest } from 'inngest/hono'
 import { readEnv, type Env } from './env'
 import { createScheduledFunctions, inngest } from './inngest'
-import { pollAndNotify } from './poll'
-import { checkReceipts } from './receipts'
 import { createStore, type Store } from './store'
 
 /** Loose check that a string looks like an Expo push token. */
@@ -55,36 +53,11 @@ export function createApp(
     return c.json({ ok: true })
   })
 
-  // Scheduled jobs. Callable manually; guarded by CRON_SECRET when configured.
-  const authorized = (c: import('hono').Context) =>
-    !env.cronSecret ||
-    c.req.header('Authorization') === `Bearer ${env.cronSecret}`
-
-  // Fetch news and push notifications for anything new.
-  const runPoll = async (c: import('hono').Context) => {
-    if (!authorized(c)) {
-      return c.json({ error: 'Unauthorized' }, 401)
-    }
-    return c.json(await pollAndNotify(store, env))
-  }
-
-  // Check delivery receipts for earlier pushes and prune dead device tokens.
-  const runReceipts = async (c: import('hono').Context) => {
-    if (!authorized(c)) {
-      return c.json({ error: 'Unauthorized' }, 401)
-    }
-    return c.json(await checkReceipts(store, env))
-  }
-
-  app.get('/cron/poll', runPoll)
-  app.post('/cron/poll', runPoll)
-  app.get('/cron/receipts', runReceipts)
-  app.post('/cron/receipts', runReceipts)
-
-  // Inngest's callback endpoint. It's how Inngest discovers this app's
-  // scheduled functions and invokes them on their crons; it authenticates via
-  // request signature (INNGEST_SIGNING_KEY), not CRON_SECRET, so it's mounted
-  // outside the guard above. The functions share this app's env and store.
+  // Inngest's callback endpoint: how Inngest discovers this app's scheduled
+  // functions and invokes them on their crons. It authenticates by request
+  // signature (INNGEST_SIGNING_KEY). The recurring jobs run only through here —
+  // there are no separate HTTP trigger routes. The functions share this app's
+  // env and store.
   app.on(
     ['GET', 'PUT', 'POST'],
     '/api/inngest',
