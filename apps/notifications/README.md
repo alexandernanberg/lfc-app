@@ -77,16 +77,23 @@ Or set `LOCAL_POLL_MS=60000` for a plain interval poll with no Inngest involved.
 2. **Import the project** into Vercel with the **root directory set to
    `apps/notifications`**. No `vercel.json` is needed: `api/[...route].ts` is
    picked up by Vercel's filesystem routing and serves every `/api/*` path.
-   Since this is a pnpm workspace, make sure Vercel's "Include files outside the
-   root directory" is enabled so the `@lfc/api` workspace dependency resolves.
-3. **Set environment variables** (see `.env.example`):
+   Leave the **Build Command empty** — this is an API-only project with no
+   output directory, so a build step would only fail looking for one. Since this
+   is a pnpm workspace, make sure Vercel's "Include files outside the root
+   directory" is enabled so the `@lfc/api` workspace dependency resolves.
+3. **Set environment variables** (see `.env.example`). They're validated on
+   startup by the schema in `src/env.ts`, so a typo fails fast and says which key
+   is wrong. **Set these before syncing Inngest** — without valid config the app
+   serves 503s and Inngest has nothing to read.
    - `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`
    - `INNGEST_SIGNING_KEY`, `INNGEST_EVENT_KEY` — from
      [app.inngest.com](https://app.inngest.com); these drive the schedules.
    - `EXPO_ACCESS_TOKEN` — only if you enabled Expo's enhanced push security.
-4. **Point the app at it.** Set `EXPO_PUBLIC_NOTIFICATIONS_API_URL` to the
-   deployment URL when building the mobile app.
-5. **Connect Inngest** (see below) — the deploy itself doesn't run on a timer.
+4. **Check `GET /api/health`.** It returns `{"status":"ok"}` when the config is
+   valid, or a 503 naming the offending variables when it isn't.
+5. **Point the app at it.** Set `EXPO_PUBLIC_NOTIFICATIONS_API_URL` to the
+   deployment **origin** (no `/api` suffix) when building the mobile app.
+6. **Connect Inngest** (see below) — the deploy itself doesn't run on a timer.
 
 ## Scheduling (Inngest)
 

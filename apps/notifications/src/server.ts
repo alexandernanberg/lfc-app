@@ -1,14 +1,14 @@
 import { serve } from '@hono/node-server'
 import { createApp } from './app'
-import { readEnv } from './env'
+import { loadEnv } from './env'
 import { pollAndNotify } from './poll'
 import { createStore } from './store'
 
 // Standalone Node server for local development. In production the app is served
-// by Vercel functions (see api/index.ts) and polled by Vercel Cron; this file
-// is only used when running `pnpm dev`.
+// by a Vercel function (see api/[...route].ts) and the recurring jobs are driven
+// by Inngest; this file is only used when running `pnpm dev`.
 
-const env = readEnv()
+const env = loadEnv()
 // One store shared by the HTTP app and the poll loop below, so a device
 // registered over HTTP is visible to the local poll.
 const store = createStore(env)

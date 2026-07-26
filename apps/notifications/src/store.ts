@@ -62,6 +62,9 @@ interface ReceiptEntry {
 // article stays in the fetched list, so a claim never expires while the article
 // could still be re-detected as new.
 const CLAIM_TTL_SECONDS = 60 * 60 * 24 * 60 // 60 days
+// Cap how many hash fields go into a single Redis command, so a busy sweep
+// can't build a huge argument list / request body.
+const FIELD_CHUNK_SIZE = 500
 
 /** Durable store backed by Upstash Redis (used in production on Vercel). */
 class RedisStore implements Store {
@@ -101,14 +104,20 @@ class RedisStore implements Store {
   }
 
   async addPendingReceipts(entries: PendingReceipt[]): Promise<void> {
-    if (entries.length === 0) {
-      return
+    // Chunked for the same reason as removePendingReceipts: one poll can enqueue
+    // articles x devices entries.
+    for (let i = 0; i < entries.length; i += FIELD_CHUNK_SIZE) {
+      const fields: Record<string, ReceiptEntry> = {}
+      for (const { ticketId, token, ts } of entries.slice(
+        i,
+        i + FIELD_CHUNK_SIZE,
+      )) {
+        fields[ticketId] = { token, ts }
+      }
+      if (Object.keys(fields).length > 0) {
+        await this.redis.hset(RECEIPTS_KEY, fields)
+      }
     }
-    const fields: Record<string, ReceiptEntry> = {}
-    for (const { ticketId, token, ts } of entries) {
-      fields[ticketId] = { token, ts }
-    }
-    await this.redis.hset(RECEIPTS_KEY, fields)
   }
 
   async listPendingReceipts(): Promise<PendingReceipt[]> {
@@ -123,10 +132,14 @@ class RedisStore implements Store {
   }
 
   async removePendingReceipts(ticketIds: string[]): Promise<void> {
-    if (ticketIds.length === 0) {
-      return
+    // Chunked so a large sweep doesn't spread thousands of arguments into one
+    // call (or push an enormous request body at the REST API).
+    for (let i = 0; i < ticketIds.length; i += FIELD_CHUNK_SIZE) {
+      const batch = ticketIds.slice(i, i + FIELD_CHUNK_SIZE)
+      if (batch.length > 0) {
+        await this.redis.hdel(RECEIPTS_KEY, ...batch)
+      }
     }
-    await this.redis.hdel(RECEIPTS_KEY, ...ticketIds)
   }
 }
 
@@ -134,21 +147,12 @@ class RedisStore implements Store {
  * Build the {@link Store}. Redis is the only implementation: the service runs on
  * serverless invocations that share no memory and cold-start constantly, so an
  * in-process fallback could only ever pretend to work — it would drop device
- * tokens and poll state between requests while still returning 200s. Missing
- * credentials is a configuration error, so fail loudly here instead.
+ * tokens and poll state between requests while still returning 200s.
  *
- * Point `UPSTASH_REDIS_REST_URL` at a local Redis (or a free Upstash database)
- * for development; see apps/notifications/README.md.
+ * The credentials are guaranteed present by the env schema (see `loadEnv`), so
+ * there's nothing to check here.
  */
 export function createStore(env: Env): Store {
-  if (!env.upstashUrl || !env.upstashToken) {
-    throw new Error(
-      '[notifications] UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are ' +
-        'required. This service has no in-memory fallback — see ' +
-        'apps/notifications/README.md.',
-    )
-  }
-
   return new RedisStore(
     new Redis({ url: env.upstashUrl, token: env.upstashToken }),
   )

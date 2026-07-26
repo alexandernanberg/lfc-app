@@ -6,15 +6,16 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",
-    "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@hono/node-server": "^1.15.0",
     "@lfc/api": "workspace:*",
+    "@t3-oss/env-core": "^0.13.11",
     "@upstash/redis": "^1.35.0",
     "hono": "^4.9.0",
-    "inngest": "^4.13.0"
+    "inngest": "^4.13.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

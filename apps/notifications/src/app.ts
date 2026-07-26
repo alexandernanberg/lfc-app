@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { serve as serveInngest } from 'inngest/hono'
-import { readEnv, type Env } from './env'
+import { loadEnv, type Env } from './env'
 import { createScheduledFunctions, inngest } from './inngest'
 import { createStore, type Store } from './store'
 
@@ -18,7 +18,7 @@ function isExpoPushToken(value: unknown): value is string {
  * poll loop) shares the exact same instance.
  */
 export function createApp(
-  env: Env = readEnv(),
+  env: Env = loadEnv(),
   store: Store = createStore(env),
 ) {
   // Everything lives under /api so Vercel's filesystem routing serves it
@@ -27,10 +27,7 @@ export function createApp(
   const app = new Hono().basePath('/api')
 
   app.get('/health', (c) =>
-    c.json({
-      service: 'lfc-notifications',
-      status: 'ok',
-    }),
+    c.json({ service: 'lfc-notifications', status: 'ok' }),
   )
 
   // Register a device to receive new-article push notifications.
@@ -70,6 +67,43 @@ export function createApp(
   )
 
   return app
+}
+
+/**
+ * Build the app, or — if the environment is invalid — a stand-in that keeps
+ * `/api/health` answering with the validation error and fails everything else
+ * with 503.
+ *
+ * Without this a misconfigured deploy throws while the module is still being
+ * imported, so *every* route 500s with no body. That's especially confusing for
+ * Inngest, which reads its function manifest from `/api/inngest` and would just
+ * report that it can't reach the app — pointing at the scheduler instead of the
+ * missing variable that actually caused it. Here, one GET to `/api/health` names
+ * the offending keys.
+ */
+export function createAppOrDiagnostic() {
+  try {
+    return createApp()
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    console.error('[notifications] invalid configuration:', message)
+
+    const app = new Hono().basePath('/api')
+    app.get('/health', (c) =>
+      c.json(
+        {
+          service: 'lfc-notifications',
+          status: 'misconfigured',
+          error: message,
+        },
+        503,
+      ),
+    )
+    app.all('/*', (c) =>
+      c.json({ error: 'Service is misconfigured', detail: message }, 503),
+    )
+    return app
+  }
 }
 
 export type AppType = ReturnType<typeof createApp>

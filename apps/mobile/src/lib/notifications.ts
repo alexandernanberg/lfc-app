@@ -174,10 +174,18 @@ export async function disableNewPostNotifications(): Promise<void> {
   }
 }
 
-/** Backend base URL, trailing slash trimmed, or null when not configured. */
+/**
+ * Backend origin, normalised, or null when not configured. Trims a trailing
+ * slash and a trailing `/api` — every documented endpoint is written as
+ * `/api/...`, so pointing the env var at `https://host/api` is an easy mistake
+ * and would otherwise produce `/api/api/devices` and a silent 404.
+ */
 function notificationsApiUrl(): string | null {
   const url = config.get('notificationsApiUrl')
-  return url ? url.replace(/\/+$/, '') : null
+  if (!url) {
+    return null
+  }
+  return url.replace(/\/+$/, '').replace(/\/api$/, '')
 }
 
 /**

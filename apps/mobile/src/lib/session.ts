@@ -1,7 +1,6 @@
 import type { Session } from '@lfc/api'
 import CookieManager from '@react-native-cookies/cookies'
 import * as SecureStore from 'expo-secure-store'
-import { Platform } from 'react-native'
 import { config } from '~/config'
 
 ///////////////////////////////////////////////////////////
@@ -68,20 +67,31 @@ async function writeCookie(token: string | null) {
   // Clear only *our* cookie. `clearAll()` would also wipe cookies for every
   // other host — including the Twitter/Instagram embeds the app renders — which
   // is a surprising side effect of signing out.
-  if (Platform.OS === 'ios') {
-    // Scoped removal is iOS-only in @react-native-cookies/cookies.
-    await CookieManager.clearByName(COOKIE_ORIGIN, 'lfc-se')
-    return
+  //
+  // Capabilities are feature-detected rather than switched on `Platform.OS`:
+  // `clearByName` is documented iOS-only and `flush` Android-only, but checking
+  // for the method is both narrower than a platform guess and safe on any
+  // platform the library may not fully support.
+  if (typeof CookieManager.clearByName === 'function') {
+    try {
+      await CookieManager.clearByName(COOKIE_ORIGIN, 'lfc-se')
+      return
+    } catch {
+      // Fall through to the overwrite below.
+    }
   }
-  // Android has no scoped clear, so overwrite with an already-expired cookie and
-  // flush so the native jar persists the removal.
+
+  // No scoped removal available: overwrite with an already-expired cookie so the
+  // native jar drops it, then persist that where the platform requires it.
   await CookieManager.set(COOKIE_ORIGIN, {
     name: 'lfc-se',
     value: '',
     path: '/',
     expires: new Date(0).toISOString(),
   })
-  await CookieManager.flush()
+  if (typeof CookieManager.flush === 'function') {
+    await CookieManager.flush()
+  }
 }
 
 function serialize(session: Session): StoredSession {
