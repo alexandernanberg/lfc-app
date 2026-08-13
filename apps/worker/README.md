@@ -45,9 +45,14 @@ local dev server below), which can trigger any function on demand.
 
 ## Local development
 
+Requires [Bun](https://bun.sh) locally — `dev`/`start` run on it directly (not
+Node), which gets native TypeScript, no build step, and automatic `.env.local`
+loading with no extra config.
+
 There is **no in-memory store** — Redis is required, locally too. The simplest
 option is a free [Upstash](https://upstash.com) database (a dev-only one is
-fine); put its REST URL and token in `.env.local`.
+fine); put its REST URL and token in `.env.local` (Bun loads it automatically —
+no `--env-file` flag or `dotenv` needed).
 
 ```sh
 cp .env.example .env.local  # fill in UPSTASH_REDIS_REST_*
@@ -78,12 +83,16 @@ Or set `LOCAL_POLL_MS=60000` for a plain interval poll with no Inngest involved.
    `UPSTASH_REDIS_REST_TOKEN`. These are **required** — the service has no
    in-memory fallback and throws at startup without them.
 2. **Import the project** into Vercel with the **root directory set to
-   `apps/worker`**. No `vercel.json` is needed: `api/[...route].ts` is
-   picked up by Vercel's filesystem routing and serves every `/api/*` path.
-   Leave the **Build Command empty** — this is an API-only project with no
-   output directory, so a build step would only fail looking for one. Since this
-   is a pnpm workspace, make sure Vercel's "Include files outside the root
-   directory" is enabled so the `@lfc/api` workspace dependency resolves.
+   `apps/worker`**. `api/[...route].ts` is picked up by Vercel's filesystem
+   routing and serves every `/api/*` path. `vercel.json` sets `bunVersion:
+   "1.x"` so the function runs on Bun rather than Node — this matters because
+   the app's relative imports (e.g. `../src/app`) omit extensions, which Bun's
+   resolver accepts but Node's strict ESM resolver rejects with
+   `ERR_MODULE_NOT_FOUND`. Leave the **Build Command empty** — this is an
+   API-only project with no output directory, so a build step would only fail
+   looking for one. Since this is a pnpm workspace, make sure Vercel's "Include
+   files outside the root directory" is enabled so the `@lfc/api` workspace
+   dependency resolves.
 3. **Set environment variables** (see `.env.example`). They're validated on
    startup by the schema in `src/env.ts`, so a typo fails fast and says which key
    is wrong. **Set these before syncing Inngest** — without valid config the app
