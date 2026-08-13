@@ -47,10 +47,10 @@ local dev server below), which can trigger any function on demand.
 
 There is **no in-memory store** — Redis is required, locally too. The simplest
 option is a free [Upstash](https://upstash.com) database (a dev-only one is
-fine); put its REST URL and token in `.env`.
+fine); put its REST URL and token in `.env.local`.
 
 ```sh
-cp .env.example .env        # fill in UPSTASH_REDIS_REST_*
+cp .env.example .env.local  # fill in UPSTASH_REDIS_REST_*
 pnpm --filter @lfc/worker dev
 ```
 
