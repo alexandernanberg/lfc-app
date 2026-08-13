@@ -27,7 +27,7 @@ export function createApp(
   const app = new Hono().basePath('/api')
 
   app.get('/health', (c) =>
-    c.json({ service: 'lfc-notifications', status: 'ok' }),
+    c.json({ service: 'lfc-worker', status: 'ok' }),
   )
 
   // Register a device to receive new-article push notifications.
@@ -86,13 +86,13 @@ export function createAppOrDiagnostic() {
     return createApp()
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    console.error('[notifications] invalid configuration:', message)
+    console.error('[worker] invalid configuration:', message)
 
     const app = new Hono().basePath('/api')
     app.get('/health', (c) =>
       c.json(
         {
-          service: 'lfc-notifications',
+          service: 'lfc-worker',
           status: 'misconfigured',
           error: message,
         },

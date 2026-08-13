@@ -10,7 +10,7 @@ import { config } from '~/config'
 // New-article notifications
 ///////////////////////////////////////////////////////////
 //
-// Primary path: the notifications backend (apps/notifications) polls the news
+// Primary path: the notifications backend (apps/worker) polls the news
 // API server-side and pushes to us via Expo. We just register this device's
 // Expo push token with it (registerDeviceForPush) — delivery is then prompt and
 // doesn't depend on the app being woken.

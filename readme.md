@@ -13,7 +13,7 @@ This is a [pnpm workspace](https://pnpm.io/workspaces) orchestrated with
 ```
 apps/
   mobile          @lfc/mobile        Expo / React Native app
-  notifications   @lfc/notifications Hono backend that pushes new-article alerts (Vercel)
+  worker          @lfc/worker        Hono backend for scheduled/background jobs (Vercel + Inngest)
 packages/
   api             @lfc/api           Transport-agnostic lfc.se API client + types
 ```
@@ -32,7 +32,7 @@ Target a single package with a filter:
 
 ```sh
 pnpm --filter @lfc/mobile dev          # expo start
-pnpm --filter @lfc/notifications dev    # local Hono server
+pnpm --filter @lfc/worker dev          # local Hono server
 ```
 
 ## Apps
@@ -42,12 +42,14 @@ pnpm --filter @lfc/notifications dev    # local Hono server
 The Expo app: news, games, standings, comments and push notifications. See
 [`apps/mobile`](apps/mobile).
 
-### 🔔 `@lfc/notifications`
+### ⚙️ `@lfc/worker`
 
-A small Hono service, deployed to Vercel, that polls lfc.se for new articles and
-pushes them to the mobile app via Expo Push. This replaces the old on-device
-background poll (which the OS throttled heavily) with prompt server-driven
-delivery. Setup and deployment: [`apps/notifications/README.md`](apps/notifications/README.md).
+A small Hono service, deployed to Vercel, that runs scheduled background jobs
+via Inngest. Right now that's polling lfc.se for new articles and pushing them
+to the mobile app via Expo Push — replacing the old on-device background poll
+(which the OS throttled heavily) with prompt server-driven delivery — but it's
+meant to grow to hold other background jobs too. Setup and deployment:
+[`apps/worker/README.md`](apps/worker/README.md).
 
 ## Notifications, end to end
 

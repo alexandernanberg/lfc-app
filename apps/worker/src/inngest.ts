@@ -28,7 +28,7 @@ const RECEIPTS_CRON = '*/30 * * * *'
  * Credentials (`INNGEST_SIGNING_KEY`, `INNGEST_EVENT_KEY`) are picked up from
  * the environment by the SDK; without them it runs in local dev mode.
  */
-export const inngest = new Inngest({ id: 'lfc-notifications' })
+export const inngest = new Inngest({ id: 'lfc-worker' })
 
 /**
  * Build the scheduled functions bound to a given env and store, so they share

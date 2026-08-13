@@ -1,8 +1,11 @@
-# @lfc/notifications
+# @lfc/worker
 
-A [Hono](https://hono.dev) backend that pushes a notification to the LFC.se
-mobile app whenever a new article is published — replacing the app's flaky
-on-device background poll with prompt, server-driven delivery.
+A [Hono](https://hono.dev) backend, running scheduled jobs on [Inngest](https://www.inngest.com),
+for background work the mobile app can't do on its own. Currently that's
+pushing a notification to the LFC.se mobile app whenever a new article is
+published — replacing the app's flaky on-device background poll with prompt,
+server-driven delivery — but the app is meant to hold other background jobs
+too as they come up.
 
 ## How it works
 
@@ -48,7 +51,7 @@ fine); put its REST URL and token in `.env`.
 
 ```sh
 cp .env.example .env        # fill in UPSTASH_REDIS_REST_*
-pnpm --filter @lfc/notifications dev
+pnpm --filter @lfc/worker dev
 ```
 
 Register a device:
@@ -75,7 +78,7 @@ Or set `LOCAL_POLL_MS=60000` for a plain interval poll with no Inngest involved.
    `UPSTASH_REDIS_REST_TOKEN`. These are **required** — the service has no
    in-memory fallback and throws at startup without them.
 2. **Import the project** into Vercel with the **root directory set to
-   `apps/notifications`**. No `vercel.json` is needed: `api/[...route].ts` is
+   `apps/worker`**. No `vercel.json` is needed: `api/[...route].ts` is
    picked up by Vercel's filesystem routing and serves every `/api/*` path.
    Leave the **Build Command empty** — this is an API-only project with no
    output directory, so a build step would only fail looking for one. Since this

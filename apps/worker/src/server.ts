@@ -16,17 +16,17 @@ const app = createApp(env, store)
 const port = Number(process.env.PORT) || 8787
 
 serve({ fetch: app.fetch, port }, (info) => {
-  console.log(`[notifications] listening on http://localhost:${info.port}`)
+  console.log(`[worker] listening on http://localhost:${info.port}`)
 })
 
 // Convenience: locally emulate Vercel Cron by polling on an interval when
 // LOCAL_POLL_MS is set (e.g. LOCAL_POLL_MS=60000). Off by default.
 const localPollMs = Number(process.env.LOCAL_POLL_MS)
 if (Number.isFinite(localPollMs) && localPollMs > 0) {
-  console.log(`[notifications] local poll every ${localPollMs}ms`)
+  console.log(`[worker] local poll every ${localPollMs}ms`)
   setInterval(() => {
     pollAndNotify(store, env)
-      .then((result) => console.log('[notifications] poll:', result))
-      .catch((error) => console.error('[notifications] poll failed:', error))
+      .then((result) => console.log('[poll-news] result:', result))
+      .catch((error) => console.error('[poll-news] failed:', error))
   }, localPollMs)
 }
