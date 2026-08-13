@@ -32,6 +32,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     reactCompiler: true,
   },
   plugins: [
+    'expo-status-bar',
     'expo-build-properties',
     'expo-image',
     'expo-notifications',

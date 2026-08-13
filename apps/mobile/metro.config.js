@@ -5,7 +5,7 @@
 // the project directory by default, so we widen it to the workspace root and
 // tell it to resolve modules from both the app's and the root node_modules.
 // See https://docs.expo.dev/guides/monorepos/.
-import { getDefaultConfig } from 'expo/metro-config'
+import { getDefaultConfig } from 'expo/metro-config.js'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
