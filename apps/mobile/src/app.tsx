@@ -81,9 +81,7 @@ function App() {
       }
       // Don't use position 0 — the feed pins a featured article first, which
       // isn't necessarily the newest. Take the max publish time instead.
-      const posts = queryClient
-        .getQueryData(postsQuery.queryKey)
-        ?.pages.flat()
+      const posts = queryClient.getQueryData(postsQuery.queryKey)?.pages.flat()
       const newest = posts?.reduce<Date | null>(
         (max, post) =>
           max == null || post.publishedAt > max ? post.publishedAt : max,

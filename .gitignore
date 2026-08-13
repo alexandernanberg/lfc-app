@@ -3,20 +3,24 @@
 # dependencies
 node_modules/
 
+# monorepo tooling
+.turbo/
+.vercel/
+
 # Expo
 .expo/
 dist/
 web-build/
 
-# Native
+# Native (Expo app; the sf-symbols module's ios/ sources are intentionally kept)
+apps/mobile/ios/
+apps/mobile/android/
 *.orig.*
 *.jks
 *.p8
 *.p12
 *.key
 *.mobileprovision
-/ios
-/android
 
 # Metro
 .metro-health-check*
@@ -31,6 +35,7 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
 
 # typescript
