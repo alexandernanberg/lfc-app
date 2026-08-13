@@ -1,5 +1,5 @@
-import type { Session } from './types'
-import { AuthError, RequestError } from './errors'
+import type { Session } from './types.js'
+import { AuthError, RequestError } from './errors.js'
 import {
   parseComment,
   parseFixture,
@@ -11,7 +11,7 @@ import {
   parseSeason,
   parseSession,
   parseStanding,
-} from './parsers'
+} from './parsers.js'
 
 ///////////////////////////////////////////////////////////
 // Request layer

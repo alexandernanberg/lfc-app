@@ -1,7 +1,7 @@
 import { fetchLatestPosts, type NewsPost } from '@lfc/api'
-import type { Env } from './env'
-import type { Store } from './store'
-import { sendPushNotifications, type ExpoPushMessage } from './push'
+import type { Env } from './env.js'
+import type { Store } from './store.js'
+import { sendPushNotifications, type ExpoPushMessage } from './push.js'
 
 export interface PollResult {
   /** First-ever run: we recorded the current articles without notifying. */

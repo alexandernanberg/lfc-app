@@ -1,4 +1,4 @@
-import type { NewsPost } from './types'
+import type { NewsPost } from './types.js'
 
 /** Default lfc.se web API base. Same origin the mobile app talks to. */
 export const DEFAULT_API_URL = 'https://www.lfc.se/webapi'

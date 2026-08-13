@@ -10,7 +10,7 @@ import type {
   Session,
   Standing,
   TeamStats,
-} from './types'
+} from './types.js'
 
 ///////////////////////////////////////////////////////////
 // Normalizers

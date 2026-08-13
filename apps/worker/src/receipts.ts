@@ -1,6 +1,6 @@
-import type { Env } from './env'
-import type { Store } from './store'
-import { getPushReceipts } from './push'
+import type { Env } from './env.js'
+import type { Store } from './store.js'
+import { getPushReceipts } from './push.js'
 
 // Expo keeps delivery receipts for ~24h. An id we haven't resolved by then
 // never will be, so drop it to keep the pending set bounded.

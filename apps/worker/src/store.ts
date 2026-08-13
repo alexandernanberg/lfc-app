@@ -1,5 +1,5 @@
 import { Redis } from '@upstash/redis'
-import type { Env } from './env'
+import type { Env } from './env.js'
 
 /**
  * Persistence the notification service needs: the set of device push tokens,

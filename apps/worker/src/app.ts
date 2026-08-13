@@ -1,8 +1,8 @@
 import { Hono } from 'hono'
 import { serve as serveInngest } from 'inngest/hono'
-import { loadEnv, type Env } from './env'
-import { createScheduledFunctions, inngest } from './inngest'
-import { createStore, type Store } from './store'
+import { loadEnv, type Env } from './env.js'
+import { createScheduledFunctions, inngest } from './inngest.js'
+import { createStore, type Store } from './store.js'
 
 /** Loose check that a string looks like an Expo push token. */
 function isExpoPushToken(value: unknown): value is string {

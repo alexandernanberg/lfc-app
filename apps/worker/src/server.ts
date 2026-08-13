@@ -1,8 +1,8 @@
 import { serve } from '@hono/node-server'
-import { createApp } from './app'
-import { loadEnv } from './env'
-import { pollAndNotify } from './poll'
-import { createStore } from './store'
+import { createApp } from './app.js'
+import { loadEnv } from './env.js'
+import { pollAndNotify } from './poll.js'
+import { createStore } from './store.js'
 
 // Standalone Node server for local development. In production the app is served
 // by a Vercel function (see api/[...route].ts) and the recurring jobs are driven
