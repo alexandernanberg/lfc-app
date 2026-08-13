@@ -107,3 +107,10 @@ export function createAppOrDiagnostic() {
 }
 
 export type AppType = ReturnType<typeof createApp>
+
+// Vercel's zero-config Hono support finds this default export directly (no
+// api/ folder or hono/vercel adapter needed) and calls its native `.fetch`,
+// which is a standard Request -> Response handler both the Node and Bun
+// runtimes understand. `createAppOrDiagnostic` degrades to a 503-only app
+// instead of throwing at import time — see its own comment above.
+export default createAppOrDiagnostic()

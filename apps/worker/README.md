@@ -34,10 +34,11 @@ standing up the service doesn't blast the whole backlog.
 | `DELETE` | `/api/devices` | Unregister a token. Body: `{ "token": "..." }`.          |
 | `*`      | `/api/inngest` | Inngest callback. Authenticated by request signature.    |
 
-Everything lives under `/api` on purpose: Vercel serves the whole app from
-`api/[...route].ts` via its own filesystem routing, so there's **no `vercel.json`
-rewrite** in front of it and Hono receives the original request path. Local dev
-uses the identical paths.
+Everything lives under `/api` on purpose, kept as a `basePath('/api')` on the
+Hono app itself (see [`src/app.ts`](src/app.ts)) rather than routing. Vercel
+finds the app via its zero-config Hono support — `src/app.ts`'s default export
+— and calls its native `.fetch` directly, so there's no separate `api/`
+folder or adapter in front of it. Local dev uses the identical paths.
 
 The recurring jobs have no HTTP routes of their own — Inngest invokes them
 through `/api/inngest`. To run one by hand, use the Inngest dashboard (or the
@@ -45,19 +46,28 @@ local dev server below), which can trigger any function on demand.
 
 ## Local development
 
-Requires [Bun](https://bun.sh) locally — `dev`/`start` run on it directly (not
-Node), which gets native TypeScript, no build step, and automatic `.env.local`
-loading with no extra config.
-
 There is **no in-memory store** — Redis is required, locally too. The simplest
 option is a free [Upstash](https://upstash.com) database (a dev-only one is
-fine); put its REST URL and token in `.env.local` (Bun loads it automatically —
-no `--env-file` flag or `dotenv` needed).
+fine); put its REST URL and token in `.env.local`.
 
 ```sh
 cp .env.example .env.local  # fill in UPSTASH_REDIS_REST_*
-pnpm --filter @lfc/worker dev
 ```
+
+Two ways to run it locally:
+
+- **`pnpm --filter @lfc/worker dev` (fast day-to-day loop).** Runs
+  [`src/server.ts`](src/server.ts) directly on [Bun](https://bun.sh) — native
+  TypeScript, no build step, `.env.local` loaded automatically with no extra
+  config. This does **not** go through Vercel's build/deploy pipeline, so it
+  won't catch things that are specific to that (e.g. framework detection,
+  build-time type-checking, the exact Bun function runtime shape).
+- **`vercel dev` (prod parity).** Runs the actual Vercel Build Output pipeline
+  locally — same framework detection, same `bunVersion` runtime, same
+  build-time TypeScript pass production gets. Needs the project linked once
+  (`vercel link` from `apps/worker`, interactive). Run `vercel dev` directly
+  (not through a package.json script — Vercel's CLI refuses to run if its own
+  `dev` script recursively invokes `vercel dev`).
 
 Register a device:
 
@@ -66,15 +76,18 @@ curl -X POST localhost:8787/api/devices -H 'content-type: application/json' \
   -d '{"token":"ExponentPushToken[xxxx]"}'
 ```
 
-To run the scheduled jobs, start the Inngest dev server alongside `pnpm dev` and
-point it at the app. Its UI (http://localhost:8288) lists both functions and can
-trigger either on demand:
+(`vercel dev` defaults to port 3000 instead of 8787.)
+
+To run the scheduled jobs, start the Inngest dev server alongside whichever dev
+server you're using and point it at the app. Its UI (http://localhost:8288)
+lists both functions and can trigger either on demand:
 
 ```sh
 npx inngest-cli@latest dev -u http://localhost:8787/api/inngest
 ```
 
-Or set `LOCAL_POLL_MS=60000` for a plain interval poll with no Inngest involved.
+Or, with the Bun-direct `dev` server, set `LOCAL_POLL_MS=60000` for a plain
+interval poll with no Inngest involved.
 
 ## Deploying to Vercel
 
@@ -83,16 +96,13 @@ Or set `LOCAL_POLL_MS=60000` for a plain interval poll with no Inngest involved.
    `UPSTASH_REDIS_REST_TOKEN`. These are **required** — the service has no
    in-memory fallback and throws at startup without them.
 2. **Import the project** into Vercel with the **root directory set to
-   `apps/worker`**. `api/[...route].ts` is picked up by Vercel's filesystem
-   routing and serves every `/api/*` path. `vercel.json` sets `bunVersion:
-   "1.x"` so the function runs on Bun rather than Node — this matters because
-   the app's relative imports (e.g. `../src/app`) omit extensions, which Bun's
-   resolver accepts but Node's strict ESM resolver rejects with
-   `ERR_MODULE_NOT_FOUND`. Leave the **Build Command empty** — this is an
-   API-only project with no output directory, so a build step would only fail
-   looking for one. Since this is a pnpm workspace, make sure Vercel's "Include
-   files outside the root directory" is enabled so the `@lfc/api` workspace
-   dependency resolves.
+   `apps/worker`**. Vercel detects the **Hono** framework from the `hono`
+   dependency and finds the app via its default export in
+   [`src/app.ts`](src/app.ts) — no `api/` folder or manual adapter needed.
+   `vercel.json` sets `bunVersion: "1.x"` so it runs on Bun rather than Node,
+   in both `vercel dev` and production. Since this is a pnpm workspace, make
+   sure Vercel's "Include files outside the root directory" is enabled so the
+   `@lfc/api` workspace dependency resolves.
 3. **Set environment variables** (see `.env.example`). They're validated on
    startup by the schema in `src/env.ts`, so a typo fails fast and says which key
    is wrong. **Set these before syncing Inngest** — without valid config the app
