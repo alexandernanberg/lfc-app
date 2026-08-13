@@ -52,7 +52,7 @@ delivery. Setup and deployment: [`apps/notifications/README.md`](apps/notificati
 ## Notifications, end to end
 
 1. On launch (with notifications enabled) the mobile app registers its Expo push
-   token with the backend (`POST /devices`).
+   token with the backend (`POST /api/devices`).
 2. Inngest runs the backend's poll function on a schedule (every 5 min).
 3. The backend fetches the latest articles via `@lfc/api`, compares them to
    the articles not yet announced, and sends an Expo push for each new one.
