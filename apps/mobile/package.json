@@ -11,7 +11,8 @@
     "format": "oxfmt --check",
     "format:fix": "oxfmt",
     "android": "expo run:android",
-    "ios": "expo run:ios"
+    "ios": "expo run:ios",
+    "eas-build-post-install": "pnpm --filter @lfc/api build"
   },
   "dependencies": {
     "@expo/dom-webview": "^57.0.1",

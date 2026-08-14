@@ -35,6 +35,29 @@ pnpm --filter @lfc/mobile dev          # expo start
 pnpm --filter @lfc/worker dev          # local Hono server
 ```
 
+## CI/CD
+
+Two GitHub Actions workflows live in [`.github/workflows`](.github/workflows):
+
+| Workflow                                           | Trigger                             | What it does                         |
+| -------------------------------------------------- | ----------------------------------- | ------------------------------------ |
+| [`ci.yml`](.github/workflows/ci.yml)               | pushes to `main`, pull requests     | `pnpm format`, `lint`, `typecheck`   |
+| [`eas-build.yml`](.github/workflows/eas-build.yml) | manual dispatch, tags matching `v*` | starts an EAS build of `@lfc/mobile` |
+
+To run a build by hand, open **Actions → EAS build → Run workflow** and pick a
+platform and an [`eas.json`](apps/mobile/eas.json) profile; pushing a `v*` tag
+builds `production` for both platforms. Builds are started with `--no-wait`, so
+the workflow finishes as soon as EAS has queued the job — track progress on
+[expo.dev](https://expo.dev/accounts/nanberg/projects/lfc/builds).
+
+The build workflow needs an `EXPO_TOKEN` repository secret
+(**Settings → Secrets and variables → Actions**), created from a personal
+access token at
+[expo.dev/settings/access-tokens](https://expo.dev/settings/access-tokens).
+
+Because `@lfc/api` is consumed from its compiled `dist/`, `@lfc/mobile` has an
+`eas-build-post-install` hook that builds it on the EAS worker after install.
+
 ## Apps
 
 ### 📱 `@lfc/mobile`
