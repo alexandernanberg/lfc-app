@@ -62,6 +62,47 @@ export function parsePost(input: unknown): Post {
   }
 }
 
+/** Block-level tags the promo footer can open with. */
+const blockTagPattern =
+  /<(?:hr|h[1-6]|figure|p|ul|ol|div|table|blockquote)\b[^>]*>/gi
+
+/**
+ * Drop the campaign footer the CMS appends to most articles.
+ *
+ * The footer is a heading of decorative emoji plus a campaign label
+ * ("SOMMARENS SNABBLÄNKAR:"), followed by a list of promo links. Everything
+ * about it rotates with the season — heading level, emoji, wording, whether a
+ * `<hr>` precedes it — which is why matching on any of those went stale.
+ *
+ * The one stable trait is how the emoji arrive: editors paste the block in from
+ * Google Docs, so each emoji comes through as an `<img data-emoji="…">` rather
+ * than as text. Nothing an author writes by hand carries that attribute (emoji
+ * in article prose and in embedded tweets are plain characters), so it's a
+ * reliable marker. Match the *last* one, walk back to the block that opens the
+ * footer, and drop it plus everything after it — the footer always runs to the
+ * end of the article.
+ */
+function stripPromoFooter(html: string): string {
+  const marker = html.lastIndexOf('data-emoji')
+  if (marker === -1) {
+    return html
+  }
+
+  let start = -1
+  for (const match of html.matchAll(blockTagPattern)) {
+    if (match.index >= marker) {
+      break
+    }
+    start = match.index
+  }
+  if (start === -1) {
+    return html
+  }
+
+  // Also swallow a separator sitting directly before the footer.
+  return html.slice(0, start).replace(/(?:\s|<hr\s*\/?>)*$/i, '')
+}
+
 function preprocessPostHtml(html: string) {
   // Remove script tags
   let sanitizedHtml = html.replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, '')
@@ -97,10 +138,10 @@ function preprocessPostHtml(html: string) {
   )
 
   // Remove annying banners
-  sanitizedHtml = sanitizedHtml
-    .replace(/<hr>[\s\S]*?<figure>[\s\S]*?data-emoji="🚩"[\s\S]*/g, '')
-    .replace(/<p>\*&nbsp;(.|\s)+<\/p>\s<figure.+<\/figure>/g, '')
-    .replace(/<hr>\s*<h2[^>]*>[\s\S]*?⛱️[\s\S]*?<\/ul>/g, '')
+  sanitizedHtml = stripPromoFooter(sanitizedHtml).replace(
+    /<p>\*&nbsp;(.|\s)+<\/p>\s<figure.+<\/figure>/g,
+    '',
+  )
 
   // Ensure all iframes has a valid protocol
   sanitizedHtml = sanitizedHtml.replace(
