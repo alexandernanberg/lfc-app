@@ -36,7 +36,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     'expo-build-properties',
     'expo-image',
     'expo-notifications',
-    'expo-background-task',
     'expo-secure-store',
     'expo-sharing',
     [

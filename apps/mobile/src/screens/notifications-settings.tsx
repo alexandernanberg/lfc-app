@@ -77,8 +77,7 @@ export function NotificationSettingsScreen() {
       </View>
 
       <Text color="baseMuted" variant="captionLarge" style={styles.caption}>
-        Få en notis när en ny artikel publiceras på lfc.se. Notiserna hämtas i
-        bakgrunden och kan fördröjas av systemet.
+        Få en notis när en ny artikel publiceras på lfc.se.
       </Text>
 
       {showPermissionWarning ? (

@@ -7,7 +7,7 @@ import { registerRootComponent } from 'expo'
 import * as Notifications from 'expo-notifications'
 import * as SplashScreen from 'expo-splash-screen'
 import { Suspense, useCallback, useEffect } from 'react'
-import { AppState, useColorScheme } from 'react-native'
+import { useColorScheme } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { AuthProvider } from '~/components/auth-context'
 import { ThemeProvider } from '~/components/theme-context'
@@ -16,7 +16,6 @@ import {
   enableNewPostNotifications,
   getNewPostNotificationsEnabled,
   getPostIdFromResponse,
-  markLatestPostSeen,
 } from '~/lib/notifications'
 import { fixturesQuery, postsQuery, standingQuery } from '~/lib/queries'
 import { queryClient } from '~/lib/query-client'
@@ -52,8 +51,8 @@ function App() {
   const navigationTheme = getNavigationTheme(colorScheme)
 
   useEffect(() => {
-    // Apply the saved preference (defaults to on): register the background news
-    // check, or ensure it's torn down if the user turned it off.
+    // Apply the saved preference (defaults to on): register this device's
+    // push token, or ensure it's torn down if the user turned it off.
     void getNewPostNotificationsEnabled().then((enabled) => {
       if (enabled) {
         void enableNewPostNotifications()
@@ -72,29 +71,8 @@ function App() {
       },
     )
 
-    // When the user opens the app, treat the newest already-loaded post as seen
-    // so the next background run doesn't notify about articles now visible in
-    // the feed. Reads the cache only — no extra request.
-    const appStateSub = AppState.addEventListener('change', (status) => {
-      if (status !== 'active') {
-        return
-      }
-      // Don't use position 0 — the feed pins a featured article first, which
-      // isn't necessarily the newest. Take the max publish time instead.
-      const posts = queryClient.getQueryData(postsQuery.queryKey)?.pages.flat()
-      const newest = posts?.reduce<Date | null>(
-        (max, post) =>
-          max == null || post.publishedAt > max ? post.publishedAt : max,
-        null,
-      )
-      if (newest) {
-        void markLatestPostSeen(newest)
-      }
-    })
-
     return () => {
       responseSub.remove()
-      appStateSub.remove()
     }
   }, [])
 
