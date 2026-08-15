@@ -2,6 +2,7 @@ import Constants from 'expo-constants'
 import * as Notifications from 'expo-notifications'
 import * as SecureStore from 'expo-secure-store'
 import { config } from '~/config'
+import { withTimeout } from '~/lib/timeout'
 
 ///////////////////////////////////////////////////////////
 // New-article notifications
@@ -72,7 +73,11 @@ function notificationsApiUrl(): string | null {
 
 /**
  * Obtain this device's Expo push token. Returns null off a real device / dev
- * build (e.g. simulators can't mint one) or when the EAS projectId is missing.
+ * build (e.g. simulators can't mint one), when the EAS projectId is missing,
+ * or if it doesn't resolve within the timeout — Expo notes this can hang for a
+ * while on iOS (e.g. no connectivity), and `setNewPostNotificationsEnabled`
+ * (called from the settings toggle) awaits this chain, so an unbounded hang
+ * here would leave that toggle stuck.
  */
 async function getExpoPushToken(): Promise<string | null> {
   const eas = Constants.expoConfig?.extra?.eas as
@@ -83,7 +88,11 @@ async function getExpoPushToken(): Promise<string | null> {
     return null
   }
   try {
-    const { data } = await Notifications.getExpoPushTokenAsync({ projectId })
+    const { data } = await withTimeout(
+      Notifications.getExpoPushTokenAsync({ projectId }),
+      10000,
+      'Expo push token request timed out',
+    )
     return data
   } catch {
     return null

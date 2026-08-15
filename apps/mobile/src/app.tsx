@@ -7,7 +7,8 @@ import { registerRootComponent } from 'expo'
 import * as Notifications from 'expo-notifications'
 import * as SplashScreen from 'expo-splash-screen'
 import { Suspense, useCallback, useEffect } from 'react'
-import { useColorScheme } from 'react-native'
+import { ErrorBoundary } from 'react-error-boundary'
+import { StyleSheet, Text, useColorScheme, View } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { AuthProvider } from '~/components/auth-context'
 import { ThemeProvider } from '~/components/theme-context'
@@ -44,6 +45,25 @@ function openPost(postId: string) {
     screen: 'Newsfeed',
     params: { screen: 'Post', params: { id: postId } },
   })
+}
+
+// Last-resort net for anything that throws during initial mount (above
+// `Navigation`'s own `onReady`, which is otherwise what hides the splash) — so
+// a render-time crash shows a message instead of leaving the splash up
+// forever. Deliberately outside every provider (theme included) so it can't
+// itself fail if whatever's above it is what broke.
+function RootErrorFallback() {
+  useEffect(() => {
+    void SplashScreen.hideAsync()
+  }, [])
+
+  return (
+    <View style={styles.errorContainer}>
+      <Text style={styles.errorText}>
+        Något gick fel. Starta om appen och försök igen.
+      </Text>
+    </View>
+  )
 }
 
 function App() {
@@ -93,22 +113,38 @@ function App() {
   }, [])
 
   return (
-    <ThemeProvider>
-      <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
-          <Suspense fallback={null}>
-            <AuthProvider>
-              <Navigation
-                ref={navigationRef}
-                theme={navigationTheme}
-                onReady={handleReady}
-              />
-            </AuthProvider>
-          </Suspense>
-        </QueryClientProvider>
-      </SafeAreaProvider>
-    </ThemeProvider>
+    <ErrorBoundary FallbackComponent={RootErrorFallback}>
+      <ThemeProvider>
+        <SafeAreaProvider>
+          <QueryClientProvider client={queryClient}>
+            <Suspense fallback={null}>
+              <AuthProvider>
+                <Navigation
+                  ref={navigationRef}
+                  theme={navigationTheme}
+                  onReady={handleReady}
+                />
+              </AuthProvider>
+            </Suspense>
+          </QueryClientProvider>
+        </SafeAreaProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   )
 }
+
+const styles = StyleSheet.create({
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+    backgroundColor: '#ffffff',
+  },
+  errorText: {
+    textAlign: 'center',
+    color: '#000000',
+  },
+})
 
 export default registerRootComponent(App)

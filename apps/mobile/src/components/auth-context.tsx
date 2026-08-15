@@ -17,6 +17,7 @@ import {
   setSession,
   subscribeSession,
 } from '~/lib/session'
+import { withTimeout } from '~/lib/timeout'
 
 ///////////////////////////////////////////////////////////
 // Auth store
@@ -30,16 +31,29 @@ import {
 // Restore the persisted session once, at module load. `restoreSession` also
 // primes the cookie, so it's in place before any authenticated request fires.
 // The promise is consumed with `use()`, so the provider suspends until it
-// resolves.
-const sessionRestore = restoreSession().then((restored) => {
-  if (!restored) {
-    return
-  }
-  // Validate the restored session against the member endpoint. A 401 trips the
-  // global handler below and clears it; prefetching (rather than a direct call)
-  // means the profile screen reuses the result instead of fetching twice.
-  void queryClient.prefetchQuery(memberQuery(restored.token))
-})
+// resolves. Bounded by a timeout and never rejects: `restoreSession` calls
+// into native modules (SecureStore, the cookie jar) with no timeout of their
+// own, and this being the sole `use()` above the whole app means a hang or an
+// uncaught rejection here would wedge the splash screen forever. Worst case on
+// timeout/failure, the app boots logged out rather than never booting.
+const sessionRestore = withTimeout(
+  restoreSession(),
+  8000,
+  'Session restore timed out',
+)
+  .then((restored) => {
+    if (!restored) {
+      return
+    }
+    // Validate the restored session against the member endpoint. A 401 trips
+    // the global handler below and clears it; prefetching (rather than a
+    // direct call) means the profile screen reuses the result instead of
+    // fetching twice.
+    void queryClient.prefetchQuery(memberQuery(restored.token))
+  })
+  .catch((error: unknown) => {
+    console.warn('[auth] session restore failed:', error)
+  })
 
 // A 401 from any endpoint means the session is no longer valid — drop it. The
 // guard avoids redundant work when multiple in-flight requests fail at once.
