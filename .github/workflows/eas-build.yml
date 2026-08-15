@@ -35,6 +35,10 @@ concurrency:
   group: eas-build-${{ github.ref }}
   cancel-in-progress: false
 
+# The build only reads the repo; EAS is what it pushes to, not GitHub.
+permissions:
+  contents: read
+
 jobs:
   build:
     name: ${{ inputs.profile || 'production' }} (${{ inputs.platform || 'all' }})
@@ -55,6 +59,8 @@ jobs:
           fi
 
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - uses: pnpm/action-setup@v4
 
@@ -63,15 +69,17 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
 
+      # EAS installs and builds the project on its own workers, but the CLI
+      # still needs the local install to read app.config.ts. Install runs
+      # before the Expo token is put in the environment, so a compromised
+      # dependency's install script has nothing to read.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - uses: expo/expo-github-action@v8
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
-
-      # EAS installs and builds the project on its own workers, but the CLI
-      # still needs the local install to read app.config.ts.
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
 
       - name: Start EAS build
         working-directory: apps/mobile
