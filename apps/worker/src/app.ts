@@ -26,9 +26,7 @@ export function createApp(
   // function receives the original path. Local dev uses the same paths.
   const app = new Hono().basePath('/api')
 
-  app.get('/health', (c) =>
-    c.json({ service: 'lfc-worker', status: 'ok' }),
-  )
+  app.get('/health', (c) => c.json({ service: 'lfc-worker', status: 'ok' }))
 
   // Register a device to receive new-article push notifications.
   app.post('/devices', async (c) => {

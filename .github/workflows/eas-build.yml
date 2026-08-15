@@ -1,0 +1,99 @@
+name: EAS build
+
+# Builds @lfc/mobile on EAS. Runs on demand, and automatically for release
+# tags (`v1.2.3`), which produce a production build of both platforms.
+#
+# Requires an `EXPO_TOKEN` repository secret — a personal access token from
+# https://expo.dev/settings/access-tokens for the `nanberg` account.
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Platform to build for
+        type: choice
+        default: all
+        options: [all, ios, android]
+      profile:
+        description: Build profile from eas.json
+        type: choice
+        default: production
+        options:
+          - production
+          - preview
+          - preview-simulator
+          - development
+          - development-simulator
+      submit:
+        description: Submit to the store when the build finishes (iOS only)
+        type: boolean
+        default: false
+  push:
+    tags: ['v*']
+
+# Never cancel a build in flight — EAS keeps running it server side anyway.
+concurrency:
+  group: eas-build-${{ github.ref }}
+  cancel-in-progress: false
+
+# The build only reads the repo; EAS is what it pushes to, not GitHub.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ inputs.profile || 'production' }} (${{ inputs.platform || 'all' }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PLATFORM: ${{ inputs.platform || 'all' }}
+      PROFILE: ${{ inputs.profile || 'production' }}
+      SUBMIT: ${{ inputs.submit || false }}
+    steps:
+      - name: Check for EXPO_TOKEN
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::EXPO_TOKEN is not set. Create one at https://expo.dev/settings/access-tokens and add it as a repository secret."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      # EAS installs and builds the project on its own workers, but the CLI
+      # still needs the local install to read app.config.ts. Install runs
+      # before the Expo token is put in the environment, so a compromised
+      # dependency's install script has nothing to read.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Start EAS build
+        working-directory: apps/mobile
+        run: |
+          set -- --non-interactive --no-wait --platform "$PLATFORM" --profile "$PROFILE"
+          if [ "$SUBMIT" = "true" ]; then
+            set -- "$@" --auto-submit
+          fi
+          eas build "$@"
+
+      - name: Summary
+        run: |
+          {
+            echo "Started a **$PROFILE** build of **$PLATFORM**."
+            echo
+            echo "Follow it at <https://expo.dev/accounts/nanberg/projects/lfc/builds>."
+          } >> "$GITHUB_STEP_SUMMARY"
