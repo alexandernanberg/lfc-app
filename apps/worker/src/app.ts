@@ -4,11 +4,24 @@ import { loadEnv, type Env } from './env.js'
 import { createScheduledFunctions, inngest } from './inngest.js'
 import { createStore, type Store } from './store.js'
 
-/** Loose check that a string looks like an Expo push token. */
+/** Check that a string has the shape of an Expo push token. */
 function isExpoPushToken(value: unknown): value is string {
   return (
     typeof value === 'string' &&
-    /^Expo(nent)?PushToken\[.+\]$/.test(value.trim())
+    /^Expo(nent)?PushToken\[[A-Za-z0-9_-]{10,64}\]$/.test(value.trim())
+  )
+}
+
+// The app only registers when its token changes, so a handful per hour per IP
+// is plenty even behind a shared NAT.
+const DEVICE_REGISTRATIONS_PER_HOUR = 20
+
+/** The caller's IP as reported by Vercel's edge (which overwrites these headers). */
+function clientIp(headers: Headers): string {
+  return (
+    headers.get('x-real-ip') ??
+    headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+    'unknown'
   )
 }
 
@@ -34,6 +47,13 @@ export function createApp(
     const token = (body as { token?: unknown } | null)?.token
     if (!isExpoPushToken(token)) {
       return c.json({ error: 'Invalid or missing Expo push token' }, 400)
+    }
+    const hits = await store.countRequest(
+      `devices:${clientIp(c.req.raw.headers)}`,
+      60 * 60,
+    )
+    if (hits > DEVICE_REGISTRATIONS_PER_HOUR) {
+      return c.json({ error: 'Too many requests' }, 429)
     }
     await store.addDevice(token.trim())
     return c.json({ ok: true })
