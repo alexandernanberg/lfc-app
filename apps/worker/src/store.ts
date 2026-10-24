@@ -36,6 +36,11 @@ export interface Store {
   listPendingReceipts(): Promise<PendingReceipt[]>
   /** Forget receipt ids once resolved (or aged out). */
   removePendingReceipts(ticketIds: string[]): Promise<void>
+  /**
+   * Count a request against `key` in a fixed window of `windowSeconds` and
+   * return the count so far, including this one.
+   */
+  countRequest(key: string, windowSeconds: number): Promise<number>
 }
 
 /** An accepted push whose delivery receipt we still need to check. */
@@ -52,6 +57,7 @@ const DEVICES_KEY = 'lfc:devices'
 const SEEDED_KEY = 'lfc:seeded'
 const CLAIM_PREFIX = 'lfc:sent:'
 const RECEIPTS_KEY = 'lfc:receipts'
+const RATE_LIMIT_PREFIX = 'lfc:ratelimit:'
 
 /** Value stored per pending receipt (the id is the hash field). */
 interface ReceiptEntry {
@@ -140,6 +146,15 @@ class RedisStore implements Store {
         await this.redis.hdel(RECEIPTS_KEY, ...batch)
       }
     }
+  }
+
+  async countRequest(key: string, windowSeconds: number): Promise<number> {
+    const fullKey = `${RATE_LIMIT_PREFIX}${key}`
+    const count = await this.redis.incr(fullKey)
+    if (count === 1) {
+      await this.redis.expire(fullKey, windowSeconds)
+    }
+    return count
   }
 }
 

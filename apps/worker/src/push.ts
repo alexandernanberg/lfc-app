@@ -78,55 +78,80 @@ export async function sendPushNotifications(
     return []
   }
 
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+    'Accept-Encoding': 'gzip, deflate',
+  }
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`
+  }
+
   const results: PushResult[] = []
 
   for (const batch of chunk(messages, SEND_CHUNK_SIZE)) {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      'Accept-Encoding': 'gzip, deflate',
-    }
-    if (accessToken) {
-      headers.Authorization = `Bearer ${accessToken}`
-    }
-
-    let tickets: ExpoTicket[] = []
-    try {
-      const res = await fetchImpl(EXPO_PUSH_ENDPOINT, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(batch),
-      })
-      if (!res.ok) {
-        throw new Error(`Expo push responded ${res.status}`)
-      }
-      const json = (await res.json()) as { data?: ExpoTicket[] }
-      tickets = json.data ?? []
-    } catch (error) {
-      // Network/transport failure for the whole batch — mark each as failed but
-      // without a prune-worthy error code, so we retry them next poll.
-      console.error('[notifications] push batch failed:', error)
+    const sent = await sendBatch(batch, headers, fetchImpl)
+    if (sent.rejected && batch.length > 1) {
+      // Expo rejects a whole request when one message in it is bad (e.g. tokens
+      // from more than one Expo project). Send them one by one so a single bad
+      // token can't stop the rest of the batch from being delivered.
       for (const message of batch) {
-        results.push({ token: message.to, ok: false })
+        results.push(
+          ...(await sendBatch([message], headers, fetchImpl)).results,
+        )
       }
-      continue
+    } else {
+      results.push(...sent.results)
     }
-
-    batch.forEach((message, i) => {
-      const ticket = tickets[i]
-      if (ticket && ticket.status === 'ok') {
-        results.push({ token: message.to, ok: true, ticketId: ticket.id })
-      } else {
-        results.push({
-          token: message.to,
-          ok: false,
-          error: ticket?.details?.error,
-        })
-      }
-    })
   }
 
   return results
+}
+
+/**
+ * Send one request to Expo. `rejected` is set when Expo refused the request as
+ * a whole (HTTP 400), as opposed to a transport or server failure.
+ */
+async function sendBatch(
+  batch: ExpoPushMessage[],
+  headers: Record<string, string>,
+  fetchImpl: typeof fetch,
+): Promise<{ results: PushResult[]; rejected: boolean }> {
+  let tickets: ExpoTicket[] = []
+  try {
+    const res = await fetchImpl(EXPO_PUSH_ENDPOINT, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(batch),
+    })
+    if (!res.ok) {
+      console.error(
+        `[notifications] push batch failed: Expo responded ${res.status}`,
+      )
+      return { results: failAll(batch), rejected: res.status === 400 }
+    }
+    const json = (await res.json()) as { data?: ExpoTicket[] }
+    tickets = json.data ?? []
+  } catch (error) {
+    // Network/transport failure for the whole batch — mark each as failed but
+    // without a prune-worthy error code, so we retry them next poll.
+    console.error('[notifications] push batch failed:', error)
+    return { results: failAll(batch), rejected: false }
+  }
+
+  const results = batch.map((message, i): PushResult => {
+    const ticket = tickets[i]
+    if (ticket && ticket.status === 'ok') {
+      return { token: message.to, ok: true, ticketId: ticket.id }
+    }
+    return { token: message.to, ok: false, error: ticket?.details?.error }
+  })
+  return { results, rejected: false }
+}
+
+/** Mark every message as failed, without a prune-worthy error code. */
+function failAll(batch: ExpoPushMessage[]): PushResult[] {
+  return batch.map((message) => ({ token: message.to, ok: false }))
 }
 
 /**
